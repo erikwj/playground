@@ -13,13 +13,9 @@ object PoolSpec extends Specification {
   val a2 = Answer(2, true)
   //State 1 => updated State 0 by Answer
   val sa = s0.update(a1)
-  //  val p = Pool.apply(sa._1, sa._2, sa._3)
 
-  //  Pool.create(s0, qs, i, )
   val s1 = InCorrect(Stream(2, 3, 4, 5, 6), Result(Some(InCorrect(Stream(1), Result(None, None))), None))
   val s2 = InCorrect(Stream(3, 4, 5, 6), Result(Some(InCorrect(Stream(1), Result(None, None))), Some(Correct(Stream(2), Result(None, None)))))
-  //  val s3 = InCorrect(Stream(4, 5, 6), Some(InCorrect(Stream(1, 3), None, None)), Some(Correct(Stream(2), None, None)))
-  //  val s6 = InCorrect(Stream(), Some(InCorrect(Stream(1, 3), None, None)), Some(Correct(Stream(2, 4, 5, 6), None, None)))
     val s7 = InCorrect(Stream(), Result(Some(InCorrect(Stream(3), Result(Some(InCorrect(Stream(1), Result(None, None))), None))), Some(Correct(Stream(2, 4, 5, 6), Result(None, None)))))
 
   "levels should work" in {
