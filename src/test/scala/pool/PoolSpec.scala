@@ -34,6 +34,12 @@ object PoolSpec extends Specification {
     s2 map add1String must_== Some(InCorrect(Stream("3_1", "4_1", "5_1", "6_1"), Result(Some(InCorrect(Stream("1_1"), Result(None, None))), Some(Correct(Stream("2_1"), Result(None, None))))))
   }
   
+  "next should work" in {
+    s0.next.toList must_== List(1,2,3,4,5,6)
+    s1.next.toList must_== List(2,3,4,5,6)
+    s7.next.toList must_== List(3)
+  }
+  
   "depth should work" in {
     s0.depth must_== 1
     s2.depth must_== 2
