@@ -6,35 +6,37 @@ object ResultItems {
     require(!q.isEmpty,q.length == 1)
   }
 
-  sealed abstract class Pool[A] {
+  sealed abstract class Pool[+A] {
     import Pool._
 
-    def qs: Stream[A]
+    def qs: A
     def result: Result[A]
 
-    def dropQ(q: A): Stream[A] = qs.filter(_ != q)
+    def add[B](q: B)(f:A => B):B 
 
-    def appendQ(q: Stream[A]) = qs.append(q)
+    def drop[B](q: B)(f:A => B):B 
+    
+    def contains[B](q:B):Boolean
 
     /**
      * Update: updates a Pool with an answers and returns a new Pool
      */
-        def update(b:Boolean)(a: Stream[A]): Pool[A] = {
+        def update[B](b:Boolean)(a: B): Pool[B] = {
     
-          def updateA[T <: Pool[A]](q: Stream[A], t: Stream[T])(f: (Stream[A], Result[A]) => Stream[T]) = t match {
+          def updateA[T <: Pool[A]](q: A, t: T)(f: (A, Result[A]) => T) = t match {
             case Stream.Empty => f(q, Result.Empty.apply)
-            case _ => f(t.head.appendQ(q), t.head.result)
+            case _ => f(q, t.result)
           }
     
-          def updateCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
-            if (b) updateA(q, p)((q, r) => Stream(correct(q, r))) else p
+          def updateCorrect(p: Pool[A])(q:A)(b:Boolean): Pool[A] =
+            if (b) updateA(q, p)((q, r) => correct(q, r)) else p
             
-          def updateInCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
-            if (!b) updateA(q, p)((q,r) => Stream(incorrect(q, r))) else p
+          def updateInCorrect(p: Pool[A])(q:A)(b:Boolean): Pool[A] =
+            if (!b) updateA(q, p)((q,r) => incorrect(q, r)) else p
     
-          if (contains(a.head)) this match {
-            case tc: Correct[A] => correct(dropQ(a.head), Result(updateInCorrect(tc.result.left)(a)(b), updateCorrect(tc.result.right)(a)(b)))
-            case ti: InCorrect[A] => incorrect(dropQ(a.head), Result(updateInCorrect(ti.result.left)(a)(b), updateCorrect(ti.result.right)(a)(b)))
+          if (contains(a)) this match {
+            case tc: Correct[A] => correct(drop(this.qs,a.head), Result(updateInCorrect(tc.result.left)(a)(b), updateCorrect(tc.result.right)(a)(b)))
+            case ti: InCorrect[A] => incorrect(drop(this.qs,a.head), Result(updateInCorrect(ti.result.left)(a)(b), updateCorrect(ti.result.right)(a)(b)))
           }
           else this
     
@@ -169,9 +171,9 @@ object ResultItems {
 
   }
 
-  case class InCorrect[A](qs: Stream[A], result: Result[A]) extends Pool[A]
+  case class InCorrect[A](qs: A, result: Result[A]) extends Pool[A]
 
-  case class Correct[A](qs: Stream[A], result: Result[A]) extends Pool[A]
+  case class Correct[A](qs: A, result: Result[A]) extends Pool[A]
 
   case class Result[A](left: Stream[Pool[A]], right: Stream[Pool[A]]) {
     def flatten[A] = Stream(this.left, this.right).flatten
@@ -191,45 +193,10 @@ object ResultItems {
   object Pool {
     import Result._
 
-    def incorrect[A](qs: Stream[A], r: Result[A]): Pool[A] = InCorrect(qs, r)
-    def correct[A](qs: Stream[A], r: Result[A]): Pool[A] = Correct(qs, r)
+    def incorrect[A](qs: A, r: Result[A]): Pool[A] = InCorrect(qs, r)
+    def correct[A](qs: A, r: Result[A]): Pool[A] = Correct(qs, r)
 
-    def apply[A](qs: => Stream[A]): Pool[A] = incorrect(qs, Result.Empty.apply)
-
-    //    def folder[A, B](ps: Stream[Pool[A]])(z: B)(f: (Pool[A], B) => B)(g: B => Boolean): B = {
-    //      if (ps.isEmpty) sys.error("ps should contain elements")
-    //      if (g(z)) z
-    //      else {
-    //        val acc = ps.tail //todo list
-    //        val h = ps.head //current element
-    //        val hqs = f(h, z) //result stream
-    //        h.result match {
-    //          case Result(Stream.Empty, Stream.Empty) => //Leaf
-    //            if (acc.isEmpty) hqs else folder(acc)(hqs)(f)(g)
-    //          case _ => //Some node
-    //            folder(acc.append(h.result.flatten))(hqs)(f)(g)
-    //        }
-    //      }
-    //    }
-
-    //    /**
-    //     *
-    //     */
-    //    def finder[A, B](ps: Stream[Pool[A]])(f: (Pool[A]) => B)(g: B => Boolean): B = {
-    //      if (ps.isEmpty) sys.error("ps should contain elements")
-    //      else {
-    //        val acc = ps.tail
-    //        val h = ps.head
-    //        val hqs = f(h)
-    //        if (g(hqs)) hqs
-    //        h.result match {
-    //          case Result(Stream.Empty, Stream.Empty) => //Leaf
-    //            if (acc.isEmpty) hqs else finder(acc)(f)(g)
-    //          case _ => //Some node
-    //            finder(acc.append(h.result.flatten))(f)(g)
-    //        }
-    //      }
-    //    }
+    def apply[A](qs: => A): Pool[A] = incorrect(qs, Result.Empty.apply)
 
   }
 
