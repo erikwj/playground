@@ -80,6 +80,31 @@ object ResultItems {
         case tc: Correct[A] => mapC(Some(tc))(f)
       }
     }
+    
+    /**
+     * flatMap
+     *  
+     *  Scalaz.Tree
+     *  def flatMap[B](f: A => Tree[B]): Tree[B] = {
+     *  val r: Tree[B] = f(rootLabel)
+     *  Tree.node(r.rootLabel, r.subForest #::: subForest.map(_.flatMap(f)))
+     *  }
+     */
+//    def flatMap[B](f: Stream[A] => Option[Pool[B]]): Option[Pool[B]] = {
+//    		
+//    		def mapI[A, B](p: Option[InCorrect[A]])(f: Stream[A] =>  InCorrect[B]): Option[InCorrect[B]] = p map
+//    				{ case InCorrect(v, Result(i, c)) => val i = f(v)
+//    		  Pool.incorrect(i.q.qs, r)InCorrect(f(v), Result(mapI(i)(f), mapC(c)(f))) }
+//    		
+//    		def mapC[A, B](p: Option[Correct[A]])(f: Stream[A] =>  Option[Correct[B]]): Option[Correct[B]] = p map {
+//    		case Correct(v, Result(i, c)) => Correct(f(v), Result(mapI(i)(f), mapC(c)(f)))
+//    		}
+//    		
+//    		this match {
+//    		case ti: InCorrect[A] => mapI(Some(ti))(f)
+//    		case tc: Correct[A] => mapC(Some(tc))(f)
+//    		}
+//    }
 
     /**
      * FilterMap
