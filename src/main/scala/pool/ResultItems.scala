@@ -2,7 +2,9 @@ package pool
 
 object ResultItems {
 
-  case class Answer[A](q: A, r: Boolean)
+  case class Answer[A](q: Stream[A], r: Boolean){
+    require(!q.isEmpty,q.length == 1)
+  }
 
   sealed abstract class Pool[A] {
     import Pool._
@@ -12,32 +14,39 @@ object ResultItems {
 
     def dropQ(q: A): Stream[A] = qs.filter(_ != q)
 
-    def appendQ(q: A) = qs.append(Stream(q))
+    def appendQ(q: Stream[A]) = qs.append(q)
 
     /**
      * Update: updates a Pool with an answers and returns a new Pool
      */
-        def update(a: Answer[A]): Pool[A] = {
+        def update(b:Boolean)(a: Stream[A]): Pool[A] = {
     
-          def updateA[T <: Pool[A]](q: A, t: Stream[T])(f: (Stream[A], Result[A]) => Stream[T]) = t match {
-            case Stream.Empty => f(Stream(q), Result.Empty.apply)
+          def updateA[T <: Pool[A]](q: Stream[A], t: Stream[T])(f: (Stream[A], Result[A]) => Stream[T]) = t match {
+            case Stream.Empty => f(q, Result.Empty.apply)
             case _ => f(t.head.appendQ(q), t.head.result)
           }
     
-          def updateCorrect(p: Stream[Pool[A]], a: Answer[A]): Stream[Pool[A]] =
-            if (a.r) updateA(a.q, p)((q, r) => Stream(correct(q, r))) else p
+          def updateCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
+            if (b) updateA(q, p)((q, r) => Stream(correct(q, r))) else p
             
-          def updateInCorrect(p: Stream[Pool[A]], a: Answer[A]): Stream[Pool[A]] =
-            if (!a.r) updateA(a.q, p)((q,r) => Stream(incorrect(q, r))) else p
+          def updateInCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
+            if (!b) updateA(q, p)((q,r) => Stream(incorrect(q, r))) else p
     
-          if (contains(a.q)) this match {
-            case tc: Correct[A] => correct(dropQ(a.q), Result(updateInCorrect(tc.result.left, a), updateCorrect(tc.result.right, a)))
-            case ti: InCorrect[A] => incorrect(dropQ(a.q), Result(updateInCorrect(ti.result.left, a), updateCorrect(ti.result.right, a)))
+          if (contains(a.head)) this match {
+            case tc: Correct[A] => correct(dropQ(a.head), Result(updateInCorrect(tc.result.left)(a)(b), updateCorrect(tc.result.right)(a)(b)))
+            case ti: InCorrect[A] => incorrect(dropQ(a.head), Result(updateInCorrect(ti.result.left)(a)(b), updateCorrect(ti.result.right)(a)(b)))
           }
           else this
     
         }
-
+        
+    def updater(b:Boolean) = update(b) _
+    
+    def updateBranch(a:Answer[A]) = {
+      val u = updater(a.r)
+      this flatMap {p => u(a.q)}
+    }
+    
     def isHead(q: A): Boolean = qs.head == q
     def contains(q: A): Boolean = qs.contains(q)
 
@@ -141,7 +150,7 @@ object ResultItems {
       def counter(p: Stream[Pool[A]]): B = {
         p match {
           case Stream.Empty => Stream((Stream.Empty, ""))
-          case _ => Stream((p.head.qs, p.head.toString()))
+          case _ => Stream((p.head.qs, p.head.show))
         }
       }
       this.fold(counter(_))(_.append(_))
@@ -153,7 +162,7 @@ object ResultItems {
      *
      *
      */
-    override def toString = this match {
+    def show = this match {
       case x: InCorrect[A] => "<I>"
       case x: Correct[A] => "<C>"
     }
@@ -176,6 +185,7 @@ object ResultItems {
         Result[A](emptyStream, emptyStream)
       }
     }
+    def merge[A](a:Result[A],b:Result[A]) = Result(Stream(a.left,b.left).flatten,Stream(a.right,b.right).flatten)
   }
 
   object Pool {

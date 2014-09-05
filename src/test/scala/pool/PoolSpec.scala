@@ -9,12 +9,12 @@ object PoolSpec extends Specification {
 
   //State 0
   val s0 = InCorrect(Stream(1, 2, 3, 4, 5, 6), Result(Stream.Empty, Stream.Empty))
-  val a1 = Answer(1, false)
-  val a2 = Answer(2, true)
-  val a6 = Answer(6, true)
+  val a1 = Answer(Stream(1), false)
+  val a2 = Answer(Stream(2), true)
+  val a6 = Answer(Stream(6), true)
 //  
 //  //State 1 => updated State 0 by Answer
-  val sa = s0.update(a1)
+  val sa = s0.update(a1.r)(a1.q)
 
   def emptyResult[A] = Result.Empty.apply
   
@@ -29,8 +29,9 @@ object PoolSpec extends Specification {
 
   "update should work" in {
     sa must_== s1
-    s1.update(a2) must_== s2c
-    s6.update(a6) must_== s6a
+    s1.update(a2.r)(a2.q) must_== s2c
+    s6.update(a6.r)(a6.q) must_== s6a
+    s0.updateBranch(a1) must_== s1
   }
 
   "levels should work" in {
