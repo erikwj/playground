@@ -108,6 +108,14 @@ object ResultItems {
 
     def incorrect[A](qs: A, r: Stream[Pool[A]]): Pool[A] = InCorrect(qs, r)
     def correct[A](qs: A, r: Stream[Pool[A]]): Pool[A] = Correct(qs, r)
+    
+        /** Construct a new Tree node. */
+    def inode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = InCorrect(root, result)
+    def cnode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = Correct(root, result)
+
+    /** Construct a tree node with no children. */
+    def ileaf[A](root: => A): Pool[A] = inode(root, Stream.empty)
+    def cleaf[A](root: => A): Pool[A] = cnode(root, Stream.empty)
 
     def apply[A](qs: => A): Pool[A] = incorrect(qs, Stream.Empty)
 

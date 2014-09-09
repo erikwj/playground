@@ -12,8 +12,10 @@ import scalaz.std.stream.streamMonoid
 
 object PoolSpec extends Specification {
 
+  import Pool._
+
   //State 0
-  val s0 = InCorrect(Stream(1, 2, 3, 4, 5, 6), Stream.Empty)
+  val s0 = ileaf(Stream(1, 2, 3, 4, 5, 6))
   val a1 = Answer(Stream(1), false)
   val a2 = Answer(Stream(2), true)
   val a6 = Answer(Stream(6), true)
@@ -23,31 +25,33 @@ object PoolSpec extends Specification {
   //
   //  def emptyResult[A] = Stream.Empty
   //  
-  val s1 = InCorrect(Stream(2, 3, 4, 5, 6), Stream(InCorrect(Stream(1), Stream.Empty)))
-  val s1a = InCorrect(Stream(2, 3, 4, 5, 6), Stream(Correct(Stream(1), Stream.Empty)))
-  val s2b = InCorrect(Stream(3, 4, 5, 6), Stream(InCorrect(Stream(1), Stream.Empty), Correct(Stream(2), Stream.Empty)))
-  val s2c = InCorrect(Stream(3, 4, 5, 6), Stream(InCorrect(Stream(1), Stream.Empty), Correct(Stream(2), Stream.Empty)))
-  val s2 = InCorrect(Stream(6), Stream(InCorrect(Stream(1, 4), Stream.Empty), Correct(Stream(2, 3, 5), Stream.Empty)))
-  val s6 = InCorrect(Stream(6), Stream(InCorrect(Stream(1, 4), Stream.Empty), Correct(Stream(2, 3, 5), Stream.Empty)))
-  val s6a = InCorrect(Stream(), Stream(InCorrect(Stream(1, 4), Stream.Empty), Correct(Stream(2, 3, 5, 6), Stream.Empty)))
-  val s7 = InCorrect(Stream(), Stream(InCorrect(Stream(), Stream(InCorrect(Stream(1), Stream.Empty), Correct(Stream(3), Stream.Empty))), Correct(Stream(2, 4, 5, 6), Stream.Empty)))
+  val s1 = inode(Stream(2, 3, 4, 5, 6), Stream(ileaf(Stream(1))))
+  val s1a = inode(Stream(2, 3, 4, 5, 6), Stream(Correct(Stream(1), Stream.Empty)))
+  val s2b = inode(Stream(3, 4, 5, 6), Stream(ileaf(Stream(1)), cleaf(Stream(2))))
+  val s2c = inode(Stream(3, 4, 5, 6), Stream(ileaf(Stream(1)), cleaf(Stream(2))))
+  val s2 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
+  val s6 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
+  val s6a = inode(Stream(), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5, 6))))
+  val s7 = inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6))))
 
   "mergerResult should work" in {
-    val s1 = Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
-    val s2 = Stream(InCorrect(Stream(4), Stream.Empty))
-    val s3 = Stream(Correct(Stream(4), Stream.Empty))
+    val s1 = Stream(ileaf(Stream(1, 2)), cleaf(Stream(3)))
+    val s2 = Stream(ileaf(Stream(4)))
+    val s3 = Stream(cleaf(Stream(4)))
+    val s4 = Stream(cleaf(Stream(1, 2)), ileaf(Stream(3)))
+
     val m = Pool.mergeResult(s1, s2)((a, b) => a.append(b))
     val m2 = Pool.mergeResult(s2, s1)((a, b) => a.append(b))
     val m3 = Pool.mergeResult(s1, s3)((a, b) => a.append(b))
     val m4 = Pool.mergeResult(s3, s1)((a, b) => a.append(b))
     val m5 = Pool.mergeResult(s2, s3)((a, b) => a.append(b))
     val m6 = Pool.mergeResult(s3, s2)((a, b) => a.append(b))
-    m must_== Stream(InCorrect(Stream(1,2,4), Stream.Empty),Correct(Stream(3), Stream.Empty))
-    m2 must_== Stream(InCorrect(Stream(4,1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
-    m3 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
-    m4 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
-    m5 must_== Stream(InCorrect(Stream(4), Stream.Empty),Correct(Stream(4), Stream.Empty))
-    m6 must_== Stream(InCorrect(Stream(4), Stream.Empty),Correct(Stream(4), Stream.Empty))
+    m must_== Stream(ileaf(Stream(1, 2, 4)), cleaf(Stream(3)))
+    m2 must_== Stream(ileaf(Stream(4, 1, 2)), cleaf(Stream(3)))
+    m3 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(3, 4)))
+    m4 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(3, 4)))
+    m5 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
+    m6 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
   }
   //
   //  "update should work" in {
@@ -64,9 +68,9 @@ object PoolSpec extends Specification {
   "map should work" in {
     def add1(x: Stream[Int]): Stream[Int] = x map { _ + 1 }
     def add1String(x: Stream[Int]): Stream[String] = x map { _.toString + "_1" }
-    s0 map add1 must_== InCorrect(Stream(2, 3, 4, 5, 6, 7), Stream.Empty)
-    s6 map add1 must_== InCorrect(Stream(7), Stream(InCorrect(Stream(2, 5), Stream.Empty), Correct(Stream(3, 4, 6), Stream.Empty)))
-    s2 map add1String must_== InCorrect(Stream("6_1"), Stream(InCorrect(Stream("1_1", "4_1"), Stream.Empty), Correct(Stream("2_1", "3_1", "5_1"), Stream.Empty)))
+    s0 map add1 must_== ileaf(Stream(2, 3, 4, 5, 6, 7))
+    s6 map add1 must_== inode(Stream(7), Stream(ileaf(Stream(2, 5)), cleaf(Stream(3, 4, 6))))
+    s2 map add1String must_== inode(Stream("6_1"), Stream(ileaf(Stream("1_1", "4_1")), cleaf(Stream("2_1", "3_1", "5_1"))))
   }
 
   "flatMap should work" in {
