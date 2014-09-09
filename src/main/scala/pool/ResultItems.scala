@@ -14,7 +14,7 @@ object ResultItems {
   sealed abstract class Pool[+A] {
     import Pool._
 
-    def rootValue: A //Monoid? needs append methond
+    def rootValue: A //Monoid? needs append method
     def result: Stream[Pool[A]]
 
     /** Maps the elements of the Tree into a Monoid and folds the resulting Tree. */
@@ -39,62 +39,7 @@ object ResultItems {
       Stream.iterate(Stream(this))(f) takeWhile (!_.isEmpty) map (_ map (_.rootValue))
     }
 
-    //    def empty: A
-    //
-    //    def u[B>:A](q: A): B
-    //
-    //    def drop[B](qs: A, q: B):B
-    //
-    //    def contains[B>:A](qs: A,q:B): Boolean
-
-    //    /**
-    //     * Update: updates a Pool with an answers and returns a new Pool
-    //     */
-    //    def update[B>:A](b: Boolean)(q: B)(f: (B, Result[A]) => Pool[B]): Pool[B] = {
-    //
-    //      def updateA[B](q: B, t: Stream[Pool[A]])(f: (B, Result[A]) => Pool[B]): Stream[Pool[B]] = t match {
-    //        case Stream.Empty => Stream(f(q, Result.Empty.apply))
-    //        case _ => Stream(f(q, t.head.result))
-    //      }
-    //
-    //      def updateCorrect(p: Stream[Pool[A]])(b: Boolean)(q: B)(f: (B, Result[A]) => Pool[B]): Stream[Pool[B]] =
-    //        if (b) updateA(q, p)(f) else Stream(f(p.head.qs, p.head.result))
-    //
-    //      def updateInCorrect(p: Stream[Pool[A]])(b: Boolean)(q: B)(f: (B, Result[A]) => Pool[B]): Stream[Pool[B]] =
-    //        if (!b) updateA(q, p)(f) else Stream(f(p.head.qs, p.head.result))
-    //
-    //      this match {
-    //        case tc: Correct[A] => correct(drop(qs,q), Result(updateInCorrect(tc.result.left)(b)(q)(f), updateCorrect(tc.result.right)(b)(q)(f)))
-    //        case ti: InCorrect[A] => incorrect(drop(qs,q), Result(updateInCorrect(ti.result.left)(b)(q)(f), updateCorrect(ti.result.right)(b)(q)(f)))
-    //      }
-    //    }
-
-    //    def updater(b:Boolean) = update(b) _
-    //    
-    //    def updateBranch(a:Answer[A]) = {
-    //      val u = updater(a.r)
-    //      this flatMap {p => u(a.q)}
-    //    }
-    //    
-
-    //    private val z: Stream[A] = Stream.Empty
-    //
-    //    private def someQs(p: Stream[Pool[A]]): A = p match {
-    //      case Stream.Empty => Stream.Empty
-    //      case _ => p.head.qs
-    //    }
-    //
-    //    def levels: Stream[A] = fold(someQs)(_.append(_))
-
-    //    def next: Stream[A] = folder(Stream(this))(z)((p: Pool[A], s: Stream[A]) => s.append(p.qs))(x => !x.isEmpty)
-
-        def next = levels.flatten
-
-    //    def find(q: A): Pool[A] = finder(Stream(this))((p: Pool[A]) => p)(_.contains(q))
-
-    //    def diff(p1: Pool[A], p2: Pool[A]) = ???
-    //    def corrects: Int = ???
-    //    def incorrects: Int = ???
+    def next = levels.flatten
 
     /**
      *
@@ -102,10 +47,6 @@ object ResultItems {
      *
      */
     def map[B](f: A => B): Pool[B] = {
-
-      /**
-       * try Stream[InCorrect] => only lefts, Stream[Correct] => only rights, Stream[Pool] => Mixed
-       */
 
       this match {
         case InCorrect(q, r) => (q, r) match {
@@ -123,11 +64,6 @@ object ResultItems {
      *
      * flatMap
      *
-     *  def flatMap[B](f: A => Tree[B]): Tree[B] = {
-     *  val r: Tree[B] = f(rootLabel)
-     *  Tree.node(r.rootLabel, r.subForest #::: subForest.map(_.flatMap(f)))
-     *  }
-     *
      */
     def flatMap[B](f: A => Pool[B]): Pool[B] = {
       this match {
@@ -140,89 +76,18 @@ object ResultItems {
       }
     }
 
-    def unfoldForest[A, B](s: Stream[A])(f: A => (B, () => Stream[A])): Stream[Pool[B]] =
-      s.map(unfoldTree(_)(f))
-
-    def unfoldTree[A, B](v: A)(f: A => (B, () => Stream[A])): Pool[B] =
-      this match {
-        case i: InCorrect[A] => f(v) match {
-          case (a, bs) => incorrect(a, unfoldForest(bs.apply())(f))
-        }
-        case c: Correct[A] => f(v) match {
-          case (a, bs) => correct(a, unfoldForest(bs.apply())(f))
-        }
-      }
-
-    //    def mergeResult[A](l: Stream[Pool[A]], r: Stream[Pool[A]])(f: (A, A) => A): Stream[Pool[A]] = {
-    //      l match {
-    //        case Stream.Empty => r
-    //        case _ => l.head match {
-    //          case x: InCorrect[A] => r match {
-    //            case Stream.Empty => l
-    //            case _ => r.head match {
-    //              case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)))
-    //              case c: Correct[A] => Stream(l.head, c)
-    //            }
-    //          }
-    //          case x: Correct[A] => mergeResult(r, Stream(x))(f)
-    //        }
-    //      }
-    //    }
-    //    /**
-    //     * Fold
-    //     */
+    //    def unfoldForest[A, B](s: Stream[A])(f: A => (B, () => Stream[A])): Stream[Pool[B]] =
+    //      s.map(unfoldTree(_)(f))
     //
-    //    def fold[B](f: Stream[Pool[A]] => B)(g: (B, B) => B): B = {
-    //      def foldL[B](t: Option[InCorrect[A,B]])(f: Stream[Pool[A]] => B)(g: (B, B) => B): B = t match {
-    //        case Some(p) => folds[B, InCorrect[A]](p)(f)(g)
-    //        case _ => f(Stream.Empty)
-    //      }
-    //
-    //      def foldR[B](t: Option[Correct[A]])(f: Stream[Pool[A]] => B)(g: (B, B) => B): B = t match {
-    //        case Some(p) => folds[B, Correct[A]](p)(f)(g)
-    //        case _ => f(Stream.Empty)
-    //      }
-    //
-    //      def opsI(p: Option[Pool[A]]): Option[InCorrect[A]] = p map {
-    //        case i: InCorrect[A] => i
-    //      }
-    //
-    //      def opsC(p: Option[Pool[A]]): Option[Correct[A]] = p map {
-    //        case c: Correct[A] => c
-    //      }
-    //
-    //      def folds[B, T <: Pool[A]](t: T)(f: Stream[Pool[A]] => B)(g: (B, B) => B): B =
-    //        t.result.flatten.toList match {
-    //          case Nil => f(Stream(t))
-    //          case List(x: InCorrect[A], y: Correct[A]) =>
-    //            val r = t.result
-    //            g(foldL(opsI(r.left.headOption))(f)(g), foldR(opsC(r.right.headOption))(f)(g))
-    //          case List(c: Correct[A]) =>
-    //            g(f(Stream(this)), foldR(Some(c))(f)(g))
-    //          case List(i: InCorrect[A]) =>
-    //            g(f(Stream(this)), foldL(Some(i))(f)(g))
-    //        }
-    //
+    //    def unfoldTree[A, B](v: A)(f: A => (B, () => Stream[A])): Pool[B] =
     //      this match {
-    //        case i: InCorrect[A] => foldL(Some(i))(f)(g)
-    //        case c: Correct[A] => foldR(Some(c))(f)(g)
-    //      }
-    //    }
-    //
-    //    def depth = this.fold(_ => 1)((d1, d2) => 1 + (d1 max d2))
-
-    //    def leafs: Stream[(A, String)] = {
-    //      type B = Stream[(A, String)]
-    //
-    //      def counter(p: Stream[Pool[A]]): B = {
-    //        p match {
-    //          case Stream.Empty => Stream((empty, ""))
-    //          case _ => Stream((p.head.qs, p.head.show))
+    //        case i: InCorrect[A] => f(v) match {
+    //          case (a, bs) => incorrect(a, unfoldForest(bs.apply())(f))
+    //        }
+    //        case c: Correct[A] => f(v) match {
+    //          case (a, bs) => correct(a, unfoldForest(bs.apply())(f))
     //        }
     //      }
-    //      this.fold(counter(_))(_.append(_))
-    //    }
-
     /**
      *
      *
@@ -246,6 +111,35 @@ object ResultItems {
 
     def apply[A](qs: => A): Pool[A] = incorrect(qs, Stream.Empty)
 
+    def mergeResult[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(f: (A, A) => A): Stream[Pool[A]] = {
+      l match {
+        case Stream.Empty => r
+        case Stream(ii) => ii match {
+          case i: InCorrect[A] => r match {
+            case Stream.Empty => l
+            case Stream(ii, cc) => ii match {
+              //merge results
+              case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
+              //append 
+              case c: Correct[A] => Stream(l.head, c)
+            }
+          }
+          case c: Correct[A] => mergeResult(r, Stream(c))(f)
+        }
+        case Stream(ii, cc) => ii match {
+          case i: InCorrect[A] => r match {
+            case Stream.Empty => l
+            case _ => r.head match {
+              //merge results
+              case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
+              //append 
+              case c: Correct[A] => Stream(l.head, Pool.correct(f(cc.rootValue, c.rootValue), mergeResult(cc.result, c.result)(f)))
+            }
+          }
+          case c: Correct[A] => mergeResult(r, Stream(c))(f)
+        }
+      }
+    }
   }
 
   //  sealed abstract class PoolInstances {
@@ -276,16 +170,10 @@ object ResultItems {
   //
   //  }
 
-  trait TreeFunctions {
+  trait PoolFunctions {
     /** Construct a new Tree node. */
     def inode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = InCorrect(root, result)
     def cnode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = Correct(root, result)
-
-    //    def node[A](root: => A, score: => Stream[Pool[A]]): Pool[A] = new Pool[A] {
-    //      lazy val rootValue = root
-    //      lazy val result = score
-    //      override def toString = "<pool>"
-    //    }
 
     /** Construct a tree node with no children. */
     def ileaf[A](root: => A): Pool[A] = inode(root, Stream.empty)

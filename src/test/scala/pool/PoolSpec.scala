@@ -1,9 +1,14 @@
 package pool
 
-import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
-import pool.ResultItems.{ Answer, InCorrect, Correct, Pool }
+import scalaz._
+import Scalaz._
+import std.stream.{ streamInstance, streamMonoid }
+import pool.ResultItems.Answer
+import pool.ResultItems.Correct
+import pool.ResultItems.InCorrect
+import pool.ResultItems.Pool
+import scalaz.std.stream.streamMonoid
 
 object PoolSpec extends Specification {
 
@@ -26,6 +31,20 @@ object PoolSpec extends Specification {
   val s6 = InCorrect(Stream(6), Stream(InCorrect(Stream(1, 4), Stream.Empty), Correct(Stream(2, 3, 5), Stream.Empty)))
   val s6a = InCorrect(Stream(), Stream(InCorrect(Stream(1, 4), Stream.Empty), Correct(Stream(2, 3, 5, 6), Stream.Empty)))
   val s7 = InCorrect(Stream(), Stream(InCorrect(Stream(), Stream(InCorrect(Stream(1), Stream.Empty), Correct(Stream(3), Stream.Empty))), Correct(Stream(2, 4, 5, 6), Stream.Empty)))
+
+  "mergerResult should work" in {
+    val merge1 = Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
+    val merge2 = Stream(InCorrect(Stream(4), Stream.Empty))
+    val merge3 = Stream(Correct(Stream(4), Stream.Empty))
+    val m = Pool.mergeResult(merge1, merge2)((a, b) => a.append(b))
+    val m2 = Pool.mergeResult(merge2, merge1)((a, b) => a.append(b))
+    val m3 = Pool.mergeResult(merge1, merge3)((a, b) => a.append(b))
+    val m4 = Pool.mergeResult(merge3, merge1)((a, b) => a.append(b))
+    m must_== Stream(InCorrect(Stream(1,2,4), Stream.Empty),Correct(Stream(3), Stream.Empty))
+    m2 must_== Stream(InCorrect(Stream(4,1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
+    m3 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
+    m4 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
+  }
   //
   //  "update should work" in {
   //    sa must_== s1
@@ -58,6 +77,8 @@ object PoolSpec extends Specification {
   }
 
   "foldMap should work" in {
+    def add1(x: Stream[Int]): Stream[Int] = x map { _ + 1 }
+    s0.foldMap(p => add1(p))
     todo
   }
 
