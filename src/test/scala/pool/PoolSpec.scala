@@ -33,17 +33,21 @@ object PoolSpec extends Specification {
   val s7 = InCorrect(Stream(), Stream(InCorrect(Stream(), Stream(InCorrect(Stream(1), Stream.Empty), Correct(Stream(3), Stream.Empty))), Correct(Stream(2, 4, 5, 6), Stream.Empty)))
 
   "mergerResult should work" in {
-    val merge1 = Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
-    val merge2 = Stream(InCorrect(Stream(4), Stream.Empty))
-    val merge3 = Stream(Correct(Stream(4), Stream.Empty))
-    val m = Pool.mergeResult(merge1, merge2)((a, b) => a.append(b))
-    val m2 = Pool.mergeResult(merge2, merge1)((a, b) => a.append(b))
-    val m3 = Pool.mergeResult(merge1, merge3)((a, b) => a.append(b))
-    val m4 = Pool.mergeResult(merge3, merge1)((a, b) => a.append(b))
+    val s1 = Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
+    val s2 = Stream(InCorrect(Stream(4), Stream.Empty))
+    val s3 = Stream(Correct(Stream(4), Stream.Empty))
+    val m = Pool.mergeResult(s1, s2)((a, b) => a.append(b))
+    val m2 = Pool.mergeResult(s2, s1)((a, b) => a.append(b))
+    val m3 = Pool.mergeResult(s1, s3)((a, b) => a.append(b))
+    val m4 = Pool.mergeResult(s3, s1)((a, b) => a.append(b))
+    val m5 = Pool.mergeResult(s2, s3)((a, b) => a.append(b))
+    val m6 = Pool.mergeResult(s3, s2)((a, b) => a.append(b))
     m must_== Stream(InCorrect(Stream(1,2,4), Stream.Empty),Correct(Stream(3), Stream.Empty))
     m2 must_== Stream(InCorrect(Stream(4,1,2), Stream.Empty),Correct(Stream(3), Stream.Empty))
     m3 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
     m4 must_== Stream(InCorrect(Stream(1,2), Stream.Empty),Correct(Stream(3,4), Stream.Empty))
+    m5 must_== Stream(InCorrect(Stream(4), Stream.Empty),Correct(Stream(4), Stream.Empty))
+    m6 must_== Stream(InCorrect(Stream(4), Stream.Empty),Correct(Stream(4), Stream.Empty))
   }
   //
   //  "update should work" in {

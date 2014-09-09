@@ -117,6 +117,10 @@ object ResultItems {
         case Stream(ii) => ii match {
           case i: InCorrect[A] => r match {
             case Stream.Empty => l
+             case Stream(cc) => cc match {
+               case i:InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
+               case c: Correct[A] => Stream(l.head, c)
+             }
             case Stream(ii, cc) => ii match {
               //merge results
               case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
