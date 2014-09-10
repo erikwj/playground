@@ -17,6 +17,32 @@ object ResultItems {
     def rootValue: A //Monoid? needs append method
     def result: Stream[Pool[A]]
 
+    
+        /**
+     * Update: updates a Pool with an answers and returns a new Pool
+     */
+//        def update[B](b:Boolean)(a: A)(d:(Stream[A],B) => Stream[B]): Pool[B] = {
+    
+//          def updateA[T <: Pool[A]](q: Stream[A], t: Stream[T])(f: (Stream[A], Result[A]) => Stream[T]) = t match {
+//            case Stream.Empty => f(q, Result.Empty.apply)
+//            case _ => f(t.head.appendQ(q), t.head.result)
+//          }
+//    
+//          def updateCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
+//            if (b) updateA(q, p)((q, r) => Stream(correct(q, r))) else p
+//            
+//          def updateInCorrect(p: Stream[Pool[A]])(q:Stream[A])(b:Boolean): Stream[Pool[A]] =
+//            if (!b) updateA(q, p)((q,r) => Stream(incorrect(q, r))) else p
+//    
+//          if (contains(a.head)) this match {
+//            case tc: Correct[A] => correct(dropQ(a.head), Result(updateInCorrect(tc.result.left)(a)(b), updateCorrect(tc.result.right)(a)(b)))
+//            case ti: InCorrect[A] => incorrect(dropQ(a.head), Result(updateInCorrect(ti.result.left)(a)(b), updateCorrect(ti.result.right)(a)(b)))
+//          }
+//          else this
+    
+//        }
+    
+    
     //    def merge[B >: A](b:B):B
 
     /** Maps the elements of the Tree into a Monoid and folds the resulting Tree. */
