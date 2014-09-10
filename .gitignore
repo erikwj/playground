@@ -1,14 +1,11 @@
 target/
 build/
-
+.cache
 .classpath
 .project
 .settings
 *.class
 *.log
-
-# sbt specific
-.cache 
 .history/
 .lib/
 dist/*
