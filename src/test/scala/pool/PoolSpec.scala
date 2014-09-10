@@ -31,14 +31,20 @@ object PoolSpec extends Specification {
   val s2c = inode(Stream(3, 4, 5, 6), Stream(ileaf(Stream(1)), cleaf(Stream(2))))
   val s2 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
   val s6 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
-  val s6a = inode(Stream(), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5, 6))))
+  val s12 = inode(Stream(16), Stream(ileaf(Stream(11, 14)), cleaf(Stream(12, 13, 15))))
+  val s6ac = inode(Stream(), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5, 6))))
   val s7 = inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6))))
-
-  "mergerResult should work" in {
+  val s8 = inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6))))
+  
+  "mergeResult should work" in {
     val s1 = Stream(ileaf(Stream(1, 2)), cleaf(Stream(3)))
     val s2 = Stream(ileaf(Stream(4)))
     val s3 = Stream(cleaf(Stream(4)))
     val s4 = Stream(cleaf(Stream(1, 2)), ileaf(Stream(3)))
+    val s02 = Stream(inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5)))))
+    val s12 = Stream(inode(Stream(16), Stream(ileaf(Stream(11, 14)), cleaf(Stream(12, 13, 15)))))
+    val s7 = Stream(inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
+    val s8 = Stream(ileaf(Stream(14)))
 
     val m = Pool.mergeResult(s1, s2)((a, b) => a.append(b))
     val m2 = Pool.mergeResult(s2, s1)((a, b) => a.append(b))
@@ -46,12 +52,17 @@ object PoolSpec extends Specification {
     val m4 = Pool.mergeResult(s3, s1)((a, b) => a.append(b))
     val m5 = Pool.mergeResult(s2, s3)((a, b) => a.append(b))
     val m6 = Pool.mergeResult(s3, s2)((a, b) => a.append(b))
+    val m7 = Pool.mergeResult(s02, s12)((a, b) => a.append(b))
+    val m8 = Pool.mergeResult(s7, s8)((a, b) => a.append(b))
+    
     m must_== Stream(ileaf(Stream(1, 2, 4)), cleaf(Stream(3)))
     m2 must_== Stream(ileaf(Stream(4, 1, 2)), cleaf(Stream(3)))
     m3 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(3, 4)))
-    m4 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(3, 4)))
+    m4 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(4, 3)))
     m5 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
     m6 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
+    m7 must_== Stream(inode(Stream(6, 16), Stream(ileaf(Stream(1, 4, 11, 14)), cleaf(Stream(2, 3, 5, 12, 13, 15)))))
+    m8 must_== Stream(inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
   }
   //
   //  "update should work" in {
@@ -97,9 +108,8 @@ object PoolSpec extends Specification {
 
   "next should work" in {
     s0.next.flatten.toList must_== List(1, 2, 3, 4, 5, 6)
-    //    s1.next must_== Some(InCorrect(Stream(2, 3, 4, 5, 6), None, Some(Correct(Stream(1), None, None))))))
-    //    s2.next.toList must_== List(6)
     s7.next.filter(!_.isEmpty).head.toList must_== List(2, 4, 5, 6)
+    s8.next.flatten.toList must_== List(14, 2, 4, 5, 6, 1, 3)
   }
 
   //  "depth should work" in {

@@ -17,6 +17,8 @@ object ResultItems {
     def rootValue: A //Monoid? needs append method
     def result: Stream[Pool[A]]
 
+    //    def merge[B >: A](b:B):B
+
     /** Maps the elements of the Tree into a Monoid and folds the resulting Tree. */
     def foldMap[B: Monoid](f: A => B): B =
       Monoid[B].append(f(rootValue), Foldable[Stream].foldMap[Pool[A], B](result)((_: Pool[A]).foldMap(f)))
@@ -76,18 +78,6 @@ object ResultItems {
       }
     }
 
-    //    def unfoldForest[A, B](s: Stream[A])(f: A => (B, () => Stream[A])): Stream[Pool[B]] =
-    //      s.map(unfoldTree(_)(f))
-    //
-    //    def unfoldTree[A, B](v: A)(f: A => (B, () => Stream[A])): Pool[B] =
-    //      this match {
-    //        case i: InCorrect[A] => f(v) match {
-    //          case (a, bs) => incorrect(a, unfoldForest(bs.apply())(f))
-    //        }
-    //        case c: Correct[A] => f(v) match {
-    //          case (a, bs) => correct(a, unfoldForest(bs.apply())(f))
-    //        }
-    //      }
     /**
      *
      *
@@ -108,8 +98,8 @@ object ResultItems {
 
     def incorrect[A](qs: A, r: Stream[Pool[A]]): Pool[A] = InCorrect(qs, r)
     def correct[A](qs: A, r: Stream[Pool[A]]): Pool[A] = Correct(qs, r)
-    
-        /** Construct a new Tree node. */
+
+    /** Construct a new Tree node. */
     def inode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = InCorrect(root, result)
     def cnode[A](root: => A, result: => Stream[Pool[A]]): Pool[A] = Correct(root, result)
 
@@ -122,33 +112,21 @@ object ResultItems {
     def mergeResult[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(f: (A, A) => A): Stream[Pool[A]] = {
       l match {
         case Stream.Empty => r
-        case Stream(ii) => ii match {
-          case i: InCorrect[A] => r match {
-            case Stream.Empty => l
-             case Stream(cc) => cc match {
-               case i:InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
-               case c: Correct[A] => Stream(l.head, c)
-             }
-            case Stream(ii, cc) => ii match {
-              //merge results
-              case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
-              //append 
-              case c: Correct[A] => Stream(l.head, c)
-            }
-          }
-          case c: Correct[A] => mergeResult(r, Stream(c))(f)
-        }
-        case Stream(ii, cc) => ii match {
+        case _ => l.head match {
           case i: InCorrect[A] => r match {
             case Stream.Empty => l
             case _ => r.head match {
-              //merge results
-              case i: InCorrect[A] => Stream(Pool.incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f)), cc)
-              //append 
-              case c: Correct[A] => Stream(l.head, Pool.correct(f(cc.rootValue, c.rootValue), mergeResult(cc.result, c.result)(f)))
+              case i: InCorrect[A] => Stream(incorrect(f(l.head.rootValue, i.rootValue), mergeResult(l.head.result, i.result)(f))).append(mergeResult(l.tail, r.tail)(f))
+              case c: Correct[A] => (mergeResult(Stream(l.head), r.tail)(f)).append(mergeResult(l.tail, Stream(c))(f))
             }
           }
-          case c: Correct[A] => mergeResult(r, Stream(c))(f)
+          case c: Correct[A] => r match {
+            case Stream.Empty => l
+            case _ => r.head match {
+              case i: InCorrect[A] => (mergeResult(l.tail, Stream(i))(f)).append(mergeResult(Stream(l.head), r.tail)(f))
+              case c: Correct[A] => (mergeResult(l.tail, r.tail)(f)).append(Stream(correct(f(l.head.rootValue, c.rootValue), mergeResult(l.head.result, c.result)(f))))
+            }
+          }
         }
       }
     }
