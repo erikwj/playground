@@ -109,7 +109,7 @@ object ResultItems {
 
     def apply[A](qs: => A): Pool[A] = incorrect(qs, Stream.Empty)
 
-    def mergeResult[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(f: (A, A) => A): Stream[Pool[A]] = {
+    def mergeResult[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (A, A) => A): Stream[Pool[A]] = {
       l match {
         case Stream.Empty => r
         case _ => l.head match {
