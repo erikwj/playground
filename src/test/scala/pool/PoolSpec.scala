@@ -19,12 +19,7 @@ object PoolSpec extends Specification {
   val a1 = Answer(Stream(1), false)
   val a2 = Answer(Stream(2), true)
   val a6 = Answer(Stream(6), true)
-  //  
-  //  //State 1 => updated State 0 by Answer
-  //  val sa = s0.update(a1.r)(a1.q)
-  //
-  //  def emptyResult[A] = Stream.Empty
-  //  
+
   val s1 = inode(Stream(2, 3, 4, 5, 6), Stream(ileaf(Stream(1))))
   val s1a = inode(Stream(2, 3, 4, 5, 6), Stream(Correct(Stream(1), Stream.Empty)))
   val s2b = inode(Stream(3, 4, 5, 6), Stream(ileaf(Stream(1)), cleaf(Stream(2))))
@@ -54,6 +49,7 @@ object PoolSpec extends Specification {
     val m6 = Pool.mergeResult(s3, s2)((a, b) => a.append(b))
     val m7 = Pool.mergeResult(s02, s12)((a, b) => a.append(b))
     val m8 = Pool.mergeResult(s7, s8)((a, b) => a.append(b))
+    val m9 = Pool.mergeResult(s7, s02)((a, b) => a.append(b))
     
     m must_== Stream(ileaf(Stream(1, 2, 4)), cleaf(Stream(3)))
     m2 must_== Stream(ileaf(Stream(4, 1, 2)), cleaf(Stream(3)))
@@ -63,6 +59,7 @@ object PoolSpec extends Specification {
     m6 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
     m7 must_== Stream(inode(Stream(6, 16), Stream(ileaf(Stream(1, 4, 11, 14)), cleaf(Stream(2, 3, 5, 12, 13, 15)))))
     m8 must_== Stream(inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
+    m9 must_== Stream(inode(Stream(6), Stream(inode(Stream(1,4), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6,2,3,5)))))
   }
   //
   //  "update should work" in {
