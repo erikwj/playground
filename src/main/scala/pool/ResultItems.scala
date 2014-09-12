@@ -119,6 +119,10 @@ object ResultItems {
 
   case class InCorrect[A](rootValue: A, result: Stream[Pool[A]]) extends Pool[A]
   case class Correct[A](rootValue: A, result: Stream[Pool[A]]) extends Pool[A]
+//  case class IBranch[A](rootValue: Nothing, result: Stream[Pool[A]]) extends Pool[A]
+//  case class CBranch[A](rootValue: Nothing, result: Stream[Pool[A]]) extends Pool[A]
+//  case class CLeaf[A](rootValue: A, result: Nothing) extends Pool[A]
+//  case class ILeaf[A](rootValue: A, result: Nothing) extends Pool[A]
 
   object Pool {
 
