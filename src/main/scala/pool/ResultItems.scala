@@ -7,8 +7,7 @@ import std.string.stringInstance
 
 object ResultItems {
 
-  case class Answer[A](q: Stream[A], r: Boolean) {
-    require(!q.isEmpty, q.length == 1)
+  case class Answer[A](q: A, r: Boolean) {
   }
 
   sealed abstract class Pool[+A] {
@@ -23,30 +22,6 @@ object ResultItems {
       case Correct(q, qs, _) => Stream(q).append(qs)
       case _ => Stream.Empty
     }
-
-    def addAnswer[B>:A](b: Boolean)(a: B, r: Stream[Pool[B]]) = {
-      def appendAnswer(b: Boolean)(p: Pool[B], a: B) = if (b) appendCorrect(p, a) else appendInCorrect(p, a)
-
-      def appendInCorrect[B>:A](p: Pool[B], a: B): Pool[B] = {
-        p match {
-          case i: InCorrect[A] => InCorrect(i.current, i.box.append(Stream(a)), i.result)
-          case _ => p
-        }
-      }
-      def appendCorrect[B>:A](p: Pool[B], a: B): Pool[B] = {
-        p match {
-          case i: Correct[A] => Correct(i.current, i.box.append(Stream(a)), i.result)
-          case _ => p
-        }
-      }
-      r match {
-        case Stream.Empty => if (b) Stream(cleaf(a)) else Stream(ileaf(a))
-        case _ => r map { p => appendAnswer(b)(p, a)
-
-        }
-      }
-    }
-
 
     /**
      * Update: updates a Pool with an answers and returns a new Pool
@@ -236,6 +211,32 @@ object ResultItems {
     //        }
     //      }
     //    }
+
+    
+    def addAnswer[A, B >: A](b1: Boolean)(a: B, r: Stream[Pool[B]]) = {
+      def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
+        p match {
+          case i: InCorrect[A] => InCorrect(i.current, i.box #::: Stream(a), i.result)
+          case _ => ileaf(a)
+        }
+
+      def appendCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
+        p match {
+          case c: Correct[A] => Correct(c.current, c.box #::: Stream(a), c.result)
+          case _ => cleaf(a)
+        }
+
+      r match {
+        case Stream(ii,cc) => if(!b1) Stream(appendInCorrect(ii,a),cc) else Stream(ii, appendCorrect(cc,a))
+        case Stream(p) => p match {
+          case i:InCorrect[A] => if(!b1) appendInCorrect(p,a) else Stream(i, appendCorrect(p,a))
+          case c:Correct[A] => if(b1) appendCorrect(p,a) else Stream(appendInCorrect(p,a),c)
+          case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
+        }
+        case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
+      }
+    }
+
   }
 
   //  sealed abstract class PoolInstances {

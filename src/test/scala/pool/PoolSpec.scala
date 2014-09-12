@@ -15,19 +15,19 @@ object PoolSpec extends Specification {
   import Pool._
 
   //First round of answers
-  val a1 = Answer(Stream(1), false)
-  val a2 = Answer(Stream(2), true)
-  val a3 = Answer(Stream(3), false)
-  val a4 = Answer(Stream(4), true)
-  val a5 = Answer(Stream(5), true)
-  val a6 = Answer(Stream(6), true)
+  val a1 = Answer(1, false)
+  val a2 = Answer(2, true)
+  val a3 = Answer(3, false)
+  val a4 = Answer(4, true)
+  val a5 = Answer(5, true)
+  val a6 = Answer(6, true)
   //Second round of answers
-  val a1_2 = Answer(Stream(1), true)
-  val a2_2 = Answer(Stream(2), true)
-  val a3_2 = Answer(Stream(3), false)
-  val a4_2 = Answer(Stream(4), false)
-  val a5_2 = Answer(Stream(5), true)
-  val a6_2 = Answer(Stream(6), false)
+  val a1_2 = Answer(1, true)
+  val a2_2 = Answer(2, true)
+  val a3_2 = Answer(3, false)
+  val a4_2 = Answer(4, false)
+  val a5_2 = Answer(5, true)
+  val a6_2 = Answer(6, false)
 
   //State transitions State0 + Answer1 => State1
   val s0 = inode(1, Stream(2, 3, 4, 5, 6), Stream.Empty)
@@ -145,6 +145,15 @@ object PoolSpec extends Specification {
     s1.next.flatten.toList must_== List(2, 3, 4, 5, 6, 1)
     s2.next.flatten.toList must_== List(3, 4, 5, 6, 1, 2)
     s3.next.flatten.toList must_== List(4, 5, 6, 1, 3, 2)
+  }
+
+  "addAnswer should work" in {
+    Pool.addAnswer(a1.r)(a1.q, s0.result) must_== s1.result
+    Pool.addAnswer(a2.r)(a2.q, s1.result) must_== s2.result
+ 		Pool.addAnswer(a3.r)(a3.q, s2.result) must_== s3.result
+ 		Pool.addAnswer(a4.r)(a4.q, s3.result) must_== s4.result
+ 		Pool.addAnswer(a5.r)(a5.q, s4.result) must_== s5.result
+ 		Pool.addAnswer(a6.r)(a6.q, s5.result) must_== s6.result
   }
 
   //  "depth should work" in {
