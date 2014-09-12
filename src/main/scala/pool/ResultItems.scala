@@ -123,6 +123,42 @@ object ResultItems {
       }
     }
 
+    /**
+     *
+     * QMap
+     *
+     */
+    def qmap[B](f: Stream[A] => Stream[B]): Pool[B] = {
+
+      this match {
+        case ITrunk(r) => ITrunk(r map { _ qmap f })
+        case CTrunk(r) => CTrunk(r map { _ qmap f })
+        case InCorrect(q, qs, r) => (q, qs, r) match {
+          case (q, Stream.Empty, r) =>
+            val res = f(Stream(q))
+            res match {
+              case Stream.Empty => ITrunk(r map { _ qmap f })
+              case _ => inode(res.head, res.tail, r map { _ qmap f })
+            }
+          case (q, qs, r) =>
+            val res = f(Stream(q) #::: qs)
+            Pool.incorrect(res.head, res.tail, r map { _ qmap f })
+        }
+        case Correct(q, qs, r) => (q, qs, r) match {
+          case (q, Stream.Empty, r) =>
+            val res = f(Stream(q))
+            res match {
+              case Stream.Empty => CTrunk(r map { _ qmap f })
+              case _ => cnode(res.head, res.tail, r map { _ qmap f })
+            }
+          case (q, qs, r) =>
+            val res = f(Stream(q) #::: qs)
+            cnode(res.head, res.tail, r map { _ qmap f })
+        }
+
+      }
+    }
+
     //    /**
     //     *
     //     * flatMap
@@ -212,8 +248,7 @@ object ResultItems {
     //      }
     //    }
 
-    
-    def addAnswer[A, B >: A](b1: Boolean)(a: B, r: Stream[Pool[B]]) = {
+    def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[Pool[B]]): Stream[Pool[B]] = {
       def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
         p match {
           case i: InCorrect[A] => InCorrect(i.current, i.box #::: Stream(a), i.result)
@@ -227,15 +262,31 @@ object ResultItems {
         }
 
       r match {
-        case Stream(ii,cc) => if(!b1) Stream(appendInCorrect(ii,a),cc) else Stream(ii, appendCorrect(cc,a))
+        case Stream(ii, cc) => if (!b1) Stream(appendInCorrect(ii, a), cc) else Stream(ii, appendCorrect(cc, a))
         case Stream(p) => p match {
-          case i:InCorrect[A] => if(!b1) appendInCorrect(p,a) else Stream(i, appendCorrect(p,a))
-          case c:Correct[A] => if(b1) appendCorrect(p,a) else Stream(appendInCorrect(p,a),c)
+          case i: InCorrect[A] => if (!b1) Stream(appendInCorrect(i, a)) else Stream(i, appendCorrect(p, a))
+          case c: Correct[A] => if (b1) Stream(appendCorrect(c, a)) else Stream(appendInCorrect(p, a), c)
           case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
         }
         case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
       }
     }
+
+    def drop[A, B >: A](a: B)(s: Stream[A]): Stream[B] = s match {
+      case h #:: t if (h == a) => t
+      case _ => println("A = " + a)
+      s
+    }
+    
+    def drops[A,B>:A](a: B) = drop[A,B](a) _ 
+
+    //          p match {
+    //      case InCorrect(q, Stream.Empty, r) if(a == q) => ITrunk(r)
+    //      case InCorrect(q, qs, r) if(a == q) => inode(qs.head, qs.tail, r)
+    //      case Correct(q, Stream.Empty, r) if(a == q) => CTrunk(r)
+    //      case Correct(q, qs, r) if(a == q) => cnode(qs.head, qs.tail, r)
+    //      case _ => p
+    //    }
 
   }
 

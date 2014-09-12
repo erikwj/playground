@@ -148,12 +148,21 @@ object PoolSpec extends Specification {
   }
 
   "addAnswer should work" in {
-    Pool.addAnswer(a1.r)(a1.q, s0.result) must_== s1.result
-    Pool.addAnswer(a2.r)(a2.q, s1.result) must_== s2.result
- 		Pool.addAnswer(a3.r)(a3.q, s2.result) must_== s3.result
- 		Pool.addAnswer(a4.r)(a4.q, s3.result) must_== s4.result
- 		Pool.addAnswer(a5.r)(a5.q, s4.result) must_== s5.result
- 		Pool.addAnswer(a6.r)(a6.q, s5.result) must_== s6.result
+    Pool.updateResult(a1.r)(a1.q)(s0.result) must_== s1.result
+    Pool.updateResult(a2.r)(a2.q)(s1.result) must_== s2.result
+    Pool.updateResult(a3.r)(a3.q)(s2.result) must_== s3.result
+    Pool.updateResult(a4.r)(a4.q)(s3.result) must_== s4.result
+    Pool.updateResult(a5.r)(a5.q)(s4.result) must_== s5.result
+    Pool.updateResult(a6.r)(a6.q)(s5.result) must_== s6.result
+  }
+
+  "drop should work" in {
+
+    s0.qmap(drops(a1.q)) must_== inode(2, Stream(3, 4, 5, 6), Stream.Empty)
+    s1.qmap(drops(a2.q)) must_== inode(3, Stream(4, 5, 6), s1.result)
+    s2.qmap(drops(a3.q)) must_== inode(4, Stream(5, 6), s2.result)
+    s3.qmap(drops(a4.q)) must_== inode(5, Stream(6), s3.result)
+    s4.qmap(drops(a5.q)) must_== inode(6, Stream.Empty, s4.result)
   }
 
   //  "depth should work" in {
