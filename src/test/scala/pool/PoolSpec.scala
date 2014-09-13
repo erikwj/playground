@@ -158,11 +158,31 @@ object PoolSpec extends Specification {
 
   "drop should work" in {
 
-    s0.qmap(drops(a1.q)) must_== inode(2, Stream(3, 4, 5, 6), Stream.Empty)
+    s0.qmap(drops(a1.q)) must_== inode(2, Stream(3, 4, 5, 6), s0.result)
     s1.qmap(drops(a2.q)) must_== inode(3, Stream(4, 5, 6), s1.result)
     s2.qmap(drops(a3.q)) must_== inode(4, Stream(5, 6), s2.result)
     s3.qmap(drops(a4.q)) must_== inode(5, Stream(6), s3.result)
     s4.qmap(drops(a5.q)) must_== inode(6, Stream.Empty, s4.result)
+    s5.qmap(drops(a6.q)) must_== itrunk(s5.result)
+    //    s6.qmap(drops(a1.q)) must_== itrunk(s1_2.result)
+  }
+
+  "emap should work" in {
+    val s01 = s0.emap(edrops(a1.q))(updates(a1))
+    val s02 = s1.emap(edrops(a2.q))(updates(a2))
+    val s03 = s2.emap(edrops(a3.q))(updates(a3))
+    val s04 = s3.emap(edrops(a4.q))(updates(a4))
+    val s05 = s4.emap(edrops(a5.q))(updates(a5))
+    val s06 = s5.emap(edrops(a6.q))(updates(a6))
+    val s01_2 = s6.emap(edrops(a1_2.q))(updates(a1_2))
+
+    s01 must_== s1
+    s02 must_== s2
+    s03 must_== s3
+    s04 must_== s4
+    s05 must_== s5
+    s06 must_== s6
+    s01_2 must_== s1_2
   }
 
   //  "depth should work" in {
