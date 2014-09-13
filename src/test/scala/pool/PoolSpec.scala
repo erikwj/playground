@@ -87,13 +87,6 @@ object PoolSpec extends Specification {
   //    m9 must_== Stream(inode(Stream(6), Stream(inode(Stream(1,4), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6,2,3,5)))))
   //  }
   //
-  //  "update should work" in {
-  //    sa must_== s1
-  //    s1.update(a2.r)(a2.q) must_== s2c
-  //    s6.update(a6.r)(a6.q) must_== s6a
-  //    s0.updateBranch(a1) must_== s1
-  //  }
-  //
 
   "map should work" in {
     def add1(x: Int): Int = x + 1
@@ -105,13 +98,8 @@ object PoolSpec extends Specification {
     s1 map add1 must_== inode(3, Stream(4, 5, 6, 7), Stream(ileaf(2)))
     s2 map add1 must_== inode(4, Stream(5, 6, 7), Stream(ileaf(2), cleaf(3)))
   }
-  //
-  //  "flatMap should work" in {
-  //    //    def add1(x: Stream[Int]): Pool[Int] = InCorrect(x.head + 1,Stream.Empty) 
-  //    //    s0 flatMap add1 must_== InCorrect(Stream(2, 3, 4, 5, 6, 7), Stream.Empty)
-  //    todo
-  //  }
-  //
+
+
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
     s1.flatten must_== Stream(2, 3, 4, 5, 6, 1)
@@ -123,12 +111,6 @@ object PoolSpec extends Specification {
     s1_2.flatten must_== Stream(3, 1, 2, 4, 5, 6)
     s2_2.flatten must_== Stream(3, 1, 2, 4, 5, 6)
   }
-  //
-  //  "foldMap should work" in {
-  //    def add1(x: Stream[Int]): Stream[Int] = x map { _ + 1 }
-  //    s0.foldMap(p => add1(p))
-  //    todo
-  //  }
 
   "foldRight should work" in {
     val estream: Stream[Int] = Stream.Empty
@@ -164,7 +146,6 @@ object PoolSpec extends Specification {
     s3.qmap(drops(a4.q)) must_== inode(5, Stream(6), s3.result)
     s4.qmap(drops(a5.q)) must_== inode(6, Stream.Empty, s4.result)
     s5.qmap(drops(a6.q)) must_== itrunk(s5.result)
-    //    s6.qmap(drops(a1.q)) must_== itrunk(s1_2.result)
   }
 
   "emap should work" in {
@@ -175,6 +156,11 @@ object PoolSpec extends Specification {
     val s05 = s4.emap(edrops(a5.q))(updates(a5))
     val s06 = s5.emap(edrops(a6.q))(updates(a6))
     val s01_2 = s6.emap(edrops(a1_2.q))(updates(a1_2))
+    val s02_2 = s1_2.emap(edrops(a3_2.q))(updates(a3_2))
+    val s03_2 = s2_2.emap(edrops(a2_2.q))(updates(a2_2))
+    val s04_2 = s3_2.emap(edrops(a4_2.q))(updates(a4_2))
+    val s05_2 = s4_2.emap(edrops(a5_2.q))(updates(a5_2))
+    val s06_2 = s5_2.emap(edrops(a6_2.q))(updates(a6_2))
 
     s01 must_== s1
     s02 must_== s2
@@ -183,6 +169,11 @@ object PoolSpec extends Specification {
     s05 must_== s5
     s06 must_== s6
     s01_2 must_== s1_2
+    s02_2 must_== s2_2
+    s03_2 must_== s3_2
+    s04_2 must_== s4_2
+    s05_2 must_== s5_2
+    s06_2 must_== s6_2
   }
 
   //  "depth should work" in {
