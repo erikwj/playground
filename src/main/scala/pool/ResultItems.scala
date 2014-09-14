@@ -17,8 +17,8 @@ object ResultItems {
     def result: Stream[Pool[A]]
 
     def rootValues: Stream[A] = this match {
-      case InCorrect(q, qs, _) => Stream.cons(q,qs)
-      case Correct(q, qs, _) => Stream.cons(q,qs)
+      case InCorrect(q, qs, _) => Stream.cons(q, qs)
+      case Correct(q, qs, _) => Stream.cons(q, qs)
       case _ => Stream.Empty
     }
 
@@ -37,8 +37,8 @@ object ResultItems {
 
         pool match {
           //Branches or leafs should be easier with case class Branch
-          case InCorrect(q, qs, r) => squeez(Stream.cons(q,qs), r)
-          case Correct(q, qs, r) => squeez(Stream.cons(q,qs), r)
+          case InCorrect(q, qs, r) => squeez(Stream.cons(q, qs), r)
+          case Correct(q, qs, r) => squeez(Stream.cons(q, qs), r)
           //Trunk
           case _ => (result map { _.flatten }).flatten
         }
@@ -75,8 +75,8 @@ object ResultItems {
       this match {
         case ITrunk(r) => itrunk(r map { _ map f })
         case CTrunk(r) => ctrunk(r map { _ map f })
-        case InCorrect(q, qs, r) => mapper(q, qs, r)(f)(inode(_,_,_))
-        case Correct(q, qs, r) => mapper(q, qs, r)(f)(cnode(_,_,_))
+        case InCorrect(q, qs, r) => mapper(q, qs, r)(f)(inode(_, _, _))
+        case Correct(q, qs, r) => mapper(q, qs, r)(f)(cnode(_, _, _))
       }
     }
 
@@ -118,7 +118,7 @@ object ResultItems {
       case x: CTrunk[A] => "I"
     }
   }
-  
+
   //Can be a leaf with empty result or a branch with some result
   case class InCorrect[A](current: A, box: Stream[A], result: Stream[Pool[A]]) extends Pool[A]
   case class Correct[A](current: A, box: Stream[A], result: Stream[Pool[A]]) extends Pool[A]
@@ -128,11 +128,9 @@ object ResultItems {
 
   object Pool {
 
-    def incorrect[A, B](q: A, qs: Stream[A], r: Stream[Pool[A]]): Pool[A] = InCorrect(q, qs, r)
-    def correct[A, B](q: A, qs: Stream[A], r: Stream[Pool[A]]): Pool[A] = Correct(q, qs, r)
     //
     /** Construct a new Trunk with no values. */
-    def itrunk[A, B](result: => Stream[Pool[A]]): Pool[A] = ITrunk(result)
+    def itrunk[A](result: => Stream[Pool[A]]): Pool[A] = ITrunk(result)
     def ctrunk[A](result: => Stream[Pool[A]]): Pool[A] = CTrunk(result)
     //
     /** Construct a new Tree node. */
@@ -145,27 +143,50 @@ object ResultItems {
     //
     //        def apply[A](q: => A, qs: => Stream[A]): Pool[A] = incorrect(q,qs, Stream.Empty)
 
-    //    def mergeResult[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (A, A) => A): Stream[Pool[A]] = {
-    //      l match {
-    //        case Stream.Empty => r
-    //        case _ => l.head match {
-    //          case i: InCorrect[A] => r match {
-    //            case Stream.Empty => l
-    //            case _ => r.head match {
-    //              case i: InCorrect[A] => Stream(incorrect(f(l.head.current, i.current), mergeResult(l.head.result, i.result)(f))).append(mergeResult(l.tail, r.tail)(f))
-    //              case c: Correct[A] => (mergeResult(Stream(l.head), r.tail)(f)).append(mergeResult(l.tail, Stream(c))(f))
-    //            }
-    //          }
-    //          case c: Correct[A] => r match {
-    //            case Stream.Empty => l
-    //            case _ => r.head match {
-    //              case i: InCorrect[A] => (mergeResult(l.tail, Stream(i))(f)).append(mergeResult(Stream(l.head), r.tail)(f))
-    //              case c: Correct[A] => (mergeResult(l.tail, r.tail)(f)).append(Stream(correct(f(l.head.current, c.current), mergeResult(l.head.result, c.result)(f))))
-    //            }
-    //          }
-    //        }
-    //      }
-    //    }
+    def merge[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[Pool[A]] = {
+      l match {
+        case Stream.Empty => r
+        case _ => l.head match {
+          case InCorrect(ilq, ilqs, ilr) => 
+            r match {
+            case Stream.Empty => l
+            case _ => r.head match {
+              case InCorrect(irq, irqs, irr) =>
+                //rootValues
+                val rvs:Stream[A] = f(Stream.cons(ilq, ilqs),Stream.cons(irq, irqs))
+                rvs match {
+                  case Stream.Empty => Stream(itrunk(merge(ilr, irr)(f))).append(merge(l.tail, r.tail)(f))
+                  case _ => Stream(InCorrect(rvs.head, rvs.tail, merge(ilr, irr)(f))).append(merge(l.tail, r.tail)(f))
+                }
+              case Correct(crq, crqs, crr) => (merge(Stream(l.head), r.tail)(f)).append(merge(l.tail, Stream(cnode(crq, crqs, crr)))(f))
+              case it:ITrunk[A] => Stream(inode(ilq, ilqs, merge(ilr,it.result).append(r.tail)))
+              case ct:CTrunk[A] => Stream(inode(ilq, ilqs, ilr)).append(ct.result).append(r.tail)
+            }
+          }
+          case Correct(clq,clqs,clr) => r match {
+            case Stream.Empty => println("Left is shown")
+            l
+            case _ => r.head match {
+              case i: InCorrect[A] => (merge(l.tail, Stream(i))(f)).append(merge(Stream(l.head), r.tail)(f))
+              case Correct(crq,crqs,crr) => 
+                //rootValues
+                val rvs = f(Stream.cons(clq, clqs), Stream.cons(crq, crqs))
+                rvs match {
+                  case Stream.Empty => (merge(l.tail, r.tail)(f)).append(Stream(ctrunk(merge(l.head.result, crr)(f))))
+                  case _ => (merge(l.tail, r.tail)(f)).append(Stream(cnode(rvs.head,rvs.tail, merge(l.head.result, crr)(f))))
+                }
+                
+              case it:ITrunk[A] => merge(it.result,Stream.cons(cnode(clq,clqs,clr),r.tail))
+              case ct:CTrunk[A] => merge(l.tail,r.tail).append(Stream(cnode(clq, clqs, merge(ct.result,clr))))
+            }
+          }
+          case it:ITrunk[A] => merge(l.head.result.append(l.tail),r)
+          case ct:CTrunk[A] => merge(l.head.result.append(l.tail),r)
+        }
+      }
+    }
+    
+    
 
     def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[Pool[B]]): Stream[Pool[B]] = {
       def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
@@ -193,12 +214,12 @@ object ResultItems {
 
     def updateR[A, B >: A](a: Answer[B]) = updateResult[A, B](a.r)(a.q) _
 
-    def dropper[A, B >: A](a: B)(f: A => Boolean)(s: Stream[A]): Either[Stream[B], Stream[B]] = s match {
+    def drop[A, B >: A](a: B)(f: A => Boolean)(s: Stream[A]): Either[Stream[B], Stream[B]] = s match {
       case h #:: t if f(h) => Right(t)
       case _ => Left(s)
     }
 
-    def dropA[A, B >: A](a: B) = dropper[A, B](a)(_ == a) _
+    def dropA[A, B >: A](a: B) = drop[A, B](a)(_ == a) _
 
   }
 

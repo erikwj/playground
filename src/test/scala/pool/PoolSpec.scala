@@ -46,47 +46,38 @@ object PoolSpec extends Specification {
   val s5_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(6, Stream.Empty, Stream(ileaf(4), cnode(2, Stream(5), Stream.Empty)))))
   val s6_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), ctrunk(Stream(inode(4, Stream(6), Stream.Empty), cnode(2, Stream(5), Stream.Empty)))))
 
-  //  val s2c = inode(Stream(3, 4, 5, 6), Stream(ileaf(Stream(1)), cleaf(Stream(2))))
-  //  val s2 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
-  //  val s6 = inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5))))
-  //  val s12 = inode(Stream(16), Stream(ileaf(Stream(11, 14)), cleaf(Stream(12, 13, 15))))
-  //  val s6ac = inode(Stream(), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5, 6))))
-  //  val s7 = inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6))))
-  //  val s8 = inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6))))
-  //  
-  //  "mergeResult should work" in {
-  //    implicit def merge[A](a:Stream[A],b:Stream[A]) = a.append(b)
-  //    
-  //    val s1 = Stream(ileaf(Stream(1, 2)), cleaf(Stream(3)))
-  //    val s2 = Stream(ileaf(Stream(4)))
-  //    val s3 = Stream(cleaf(Stream(4)))
-  //    val s4 = Stream(cleaf(Stream(1, 2)), ileaf(Stream(3)))
-  //    val s02 = Stream(inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5)))))
-  //    val s12 = Stream(inode(Stream(16), Stream(ileaf(Stream(11, 14)), cleaf(Stream(12, 13, 15)))))
-  //    val s7 = Stream(inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
-  //    val s8 = Stream(ileaf(Stream(14)))
-  //
-  //    val m = Pool.mergeResult(s1, s2)
-  //    val m2 = Pool.mergeResult(s2, s1)
-  //    val m3 = Pool.mergeResult(s1, s3)
-  //    val m4 = Pool.mergeResult(s3, s1)
-  //    val m5 = Pool.mergeResult(s2, s3)
-  //    val m6 = Pool.mergeResult(s3, s2)
-  //    val m7 = Pool.mergeResult(s02, s12)
-  //    val m8 = Pool.mergeResult(s7, s8)
-  //    val m9 = Pool.mergeResult(s7, s02)
-  //    
-  //    m must_== Stream(ileaf(Stream(1, 2, 4)), cleaf(Stream(3)))
-  //    m2 must_== Stream(ileaf(Stream(4, 1, 2)), cleaf(Stream(3)))
-  //    m3 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(3, 4)))
-  //    m4 must_== Stream(ileaf(Stream(1, 2)), cleaf(Stream(4, 3)))
-  //    m5 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
-  //    m6 must_== Stream(ileaf(Stream(4)), cleaf(Stream(4)))
-  //    m7 must_== Stream(inode(Stream(6, 16), Stream(ileaf(Stream(1, 4, 11, 14)), cleaf(Stream(2, 3, 5, 12, 13, 15)))))
-  //    m8 must_== Stream(inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
-  //    m9 must_== Stream(inode(Stream(6), Stream(inode(Stream(1,4), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6,2,3,5)))))
-  //  }
-  //
+  "merge should work" in {
+    implicit def merger[A](a: Stream[A], b: Stream[A]): Stream[A] = a.append(b)
+
+    val s1 = Stream(inode(1, Stream(2), Stream.Empty), cleaf(3))
+    val s2 = Stream(ileaf(4))
+    val s3 = Stream(cleaf(4))
+    //    val s4 = Stream(cleaf(Stream(1, 2)), ileaf(Stream(3)))
+    //    val s02 = Stream(inode(Stream(6), Stream(ileaf(Stream(1, 4)), cleaf(Stream(2, 3, 5)))))
+    //    val s12 = Stream(inode(Stream(16), Stream(ileaf(Stream(11, 14)), cleaf(Stream(12, 13, 15)))))
+    //    val s7 = Stream(inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
+    //    val s8 = Stream(ileaf(Stream(14)))
+    //
+    val m = Pool.merge(s1, s2)
+    val m2 = Pool.merge(s2, s1)
+    val m3 = Pool.merge(s1, s3)
+    val m4 = Pool.merge(s3, s1)
+    val m5 = Pool.merge(s2, s3)
+    val m6 = Pool.merge(s3, s2)
+    //    val m7 = Pool.mergeResult(s02, s12)
+    //    val m8 = Pool.mergeResult(s7, s8)
+    //    val m9 = Pool.mergeResult(s7, s02)
+    //    
+    m must_== Stream(inode(1, Stream(2, 4), Stream.Empty), cleaf(3))
+    m2 must_== Stream(inode(4, Stream(1, 2), Stream.Empty), cleaf(3))
+    m3 must_== Stream(inode(1, Stream(2), Stream.Empty), cnode(3, Stream(4), Stream.Empty))
+    m4 must_== Stream(inode(1, Stream(2), Stream.Empty), cnode(4, Stream(3), Stream.Empty))
+    m5 must_== Stream(ileaf(4), cleaf(4))
+    m6 must_== Stream(ileaf(4), cleaf(4))
+    //    m7 must_== Stream(inode(Stream(6, 16), Stream(ileaf(Stream(1, 4, 11, 14)), cleaf(Stream(2, 3, 5, 12, 13, 15)))))
+    //    m8 must_== Stream(inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
+    //    m9 must_== Stream(inode(Stream(6), Stream(inode(Stream(1,4), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6,2,3,5)))))
+  }
 
   "map should work" in {
     def add1(x: Int): Int = x + 1
@@ -98,7 +89,6 @@ object PoolSpec extends Specification {
     s1 map add1 must_== inode(3, Stream(4, 5, 6, 7), Stream(ileaf(2)))
     s2 map add1 must_== inode(4, Stream(5, 6, 7), Stream(ileaf(2), cleaf(3)))
   }
-
 
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
@@ -114,7 +104,7 @@ object PoolSpec extends Specification {
 
   "foldRight should work" in {
     val estream: Stream[Int] = Stream.Empty
-    val fr = s0.foldRight(estream)((a, b) => Stream.cons(a,b))
+    val fr = s0.foldRight(estream)((a, b) => Stream.cons(a, b))
     fr must_== Stream(1, 2, 3, 4, 5, 6)
   }
 
