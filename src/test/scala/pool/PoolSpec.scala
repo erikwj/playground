@@ -46,7 +46,7 @@ object PoolSpec extends Specification {
   val s5_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(6, Stream.Empty, Stream(ileaf(4), cnode(2, Stream(5), Stream.Empty)))))
   val s6_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), ctrunk(Stream(inode(4, Stream(6), Stream.Empty), cnode(2, Stream(5), Stream.Empty)))))
 
-  "merge should work" in {
+  "smerge should work" in {
     implicit def merger[A](a: Stream[A], b: Stream[A]): Stream[A] = a.append(b)
 
     val s1 = Stream(inode(1, Stream(2), Stream.Empty), cleaf(3))
@@ -58,12 +58,12 @@ object PoolSpec extends Specification {
     //    val s7 = Stream(inode(Stream(), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
     //    val s8 = Stream(ileaf(Stream(14)))
     //
-    val m = Pool.merge(s1, s2)
-    val m2 = Pool.merge(s2, s1)
-    val m3 = Pool.merge(s1, s3)
-    val m4 = Pool.merge(s3, s1)
-    val m5 = Pool.merge(s2, s3)
-    val m6 = Pool.merge(s3, s2)
+    val m = Pool.smerge(s1, s2)
+    val m2 = Pool.smerge(s2, s1)
+    val m3 = Pool.smerge(s1, s3)
+    val m4 = Pool.smerge(s3, s1)
+    val m5 = Pool.smerge(s2, s3)
+    val m6 = Pool.smerge(s3, s2)
     //    val m7 = Pool.mergeResult(s02, s12)
     //    val m8 = Pool.mergeResult(s7, s8)
     //    val m9 = Pool.mergeResult(s7, s02)
@@ -78,6 +78,43 @@ object PoolSpec extends Specification {
     //    m8 must_== Stream(inode(Stream(14), Stream(inode(Stream(), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6)))))
     //    m9 must_== Stream(inode(Stream(6), Stream(inode(Stream(1,4), Stream(ileaf(Stream(1)), cleaf(Stream(3)))), cleaf(Stream(2, 4, 5, 6,2,3,5)))))
   }
+  
+  "merge should work" in {
+	  implicit def merger[A](a: Stream[A], b: Stream[A]): Stream[A] = a.append(b)
+			  
+			  val s1 = inode(1, Stream(2), Stream.Empty)
+			  val s2 = ileaf(4)
+			  val s3 = cleaf(14)
+			  val left = itrunk(Stream(itrunk(Stream(itrunk(Stream(ileaf(1),cleaf(3))),cleafs(2,Stream(4)))),ctrunk(Stream(ileaf(5), cleaf(6)))))
+        val right = itrunk(Stream(itrunk(Stream(ileaf(8),cleaf(9))),cleafs(10,Stream(11))))
+        
+        val result = itrunk(Stream(
+            itrunk(Stream(
+              inode(8,Stream.Empty,Stream(
+                  ileaf(1),cleaf(3))),
+              cleafs(2,Stream(4,9)))),
+            cnode(10,Stream(11),Stream(
+                ileaf(5), cleaf(6)))))
+
+			  //
+			  val m = Pool.merge(s1, s2)
+			  val m2 = Pool.merge(s2, s1)
+			  val m3 = Pool.merge(s1, s3)
+			  val m4 = Pool.merge(s3, s1)
+			  val m5 = Pool.merge(s2, s3)
+			  val m6 = Pool.merge(s3, s2)
+			  val m7 = Pool.merge(left, right)
+
+			  m must_== inode(1, Stream(2, 4), Stream.Empty)
+			  m2 must_== inode(4, Stream(1, 2), Stream.Empty)
+			  m3 must_== itrunk(Stream(inode(1, Stream(2), Stream.Empty), cleaf(14)))
+			  m4 must_== itrunk(Stream(inode(1, Stream(2), Stream.Empty), cleaf(14)))
+			  m5 must_== itrunk(Stream(ileaf(4), cleaf(14)))
+			  m6 must_== itrunk(Stream(ileaf(4), cleaf(14)))
+			  m7 must_== result
+  }
+  
+  
 
   "map should work" in {
     def add1(x: Int): Int = x + 1

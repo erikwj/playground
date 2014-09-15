@@ -137,56 +137,104 @@ object ResultItems {
     def inode[A](root: => A, box: => Stream[A], result: => Stream[Pool[A]]): Pool[A] = InCorrect(root, box, result)
     def cnode[A](root: => A, box: => Stream[A], result: => Stream[Pool[A]]): Pool[A] = Correct(root, box, result)
 
-    /** Construct a tree node with no children. */
+    /** Construct a tree node with one value and no children. */
     def ileaf[A](root: => A): Pool[A] = inode(root, Stream.empty, Stream.empty)
     def cleaf[A](root: => A): Pool[A] = cnode(root, Stream.empty, Stream.empty)
     //
+    /** Construct a tree node with multiple values and no children. */
+    def ileafs[A](root: => A,values: => Stream[A]): Pool[A] = inode(root, values, Stream.empty)
+    def cleafs[A](root: => A,values: => Stream[A]): Pool[A] = cnode(root, values, Stream.empty)
+    //
     //        def apply[A](q: => A, qs: => Stream[A]): Pool[A] = incorrect(q,qs, Stream.Empty)
 
-    def merge[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[Pool[A]] = {
-      l match {
-        case Stream.Empty => r
-        case _ => l.head match {
-          case InCorrect(ilq, ilqs, ilr) => 
-            r match {
-            case Stream.Empty => l
-            case _ => r.head match {
-              case InCorrect(irq, irqs, irr) =>
-                //rootValues
-                val rvs:Stream[A] = f(Stream.cons(ilq, ilqs),Stream.cons(irq, irqs))
-                rvs match {
-                  case Stream.Empty => Stream(itrunk(merge(ilr, irr)(f))).append(merge(l.tail, r.tail)(f))
-                  case _ => Stream(InCorrect(rvs.head, rvs.tail, merge(ilr, irr)(f))).append(merge(l.tail, r.tail)(f))
-                }
-              case Correct(crq, crqs, crr) => (merge(Stream(l.head), r.tail)(f)).append(merge(l.tail, Stream(cnode(crq, crqs, crr)))(f))
-              case it:ITrunk[A] => Stream(inode(ilq, ilqs, merge(ilr,it.result).append(r.tail)))
-              case ct:CTrunk[A] => Stream(inode(ilq, ilqs, ilr)).append(ct.result).append(r.tail)
-            }
-          }
-          case Correct(clq,clqs,clr) => r match {
-            case Stream.Empty => println("Left is shown")
-            l
-            case _ => r.head match {
-              case i: InCorrect[A] => (merge(l.tail, Stream(i))(f)).append(merge(Stream(l.head), r.tail)(f))
-              case Correct(crq,crqs,crr) => 
-                //rootValues
-                val rvs = f(Stream.cons(clq, clqs), Stream.cons(crq, crqs))
-                rvs match {
-                  case Stream.Empty => (merge(l.tail, r.tail)(f)).append(Stream(ctrunk(merge(l.head.result, crr)(f))))
-                  case _ => (merge(l.tail, r.tail)(f)).append(Stream(cnode(rvs.head,rvs.tail, merge(l.head.result, crr)(f))))
-                }
-                
-              case it:ITrunk[A] => merge(it.result,Stream.cons(cnode(clq,clqs,clr),r.tail))
-              case ct:CTrunk[A] => merge(l.tail,r.tail).append(Stream(cnode(clq, clqs, merge(ct.result,clr))))
-            }
-          }
-          case it:ITrunk[A] => merge(l.head.result.append(l.tail),r)
-          case ct:CTrunk[A] => merge(l.head.result.append(l.tail),r)
-        }
+    def merge[A](l: Pool[A], r: => Pool[A])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Pool[A] = {
+      (l,r) match {
+        case (i:InCorrect[A],i2:InCorrect[A]) => inode(i.current, i.box.append(Stream.cons(i2.current,i2.box)), smerge(i.result,i2.result))
+        case (c:Correct[A],c2:Correct[A]) => cnode(c.current, c.box.append(Stream.cons(c2.current,c2.box)), smerge(c.result,c2.result))
+        case (i:InCorrect[A],c:Correct[A]) => itrunk(smerge(Stream(i),Stream(c)))
+        case (c:Correct[A],i:InCorrect[A]) => itrunk(smerge(Stream(i),Stream(c)))
+        case (it:ITrunk[A],i:InCorrect[A]) => inode(i.current,i.box,smerge(it.result,i.result))
+        case (it:ITrunk[A],c:Correct[A]) => cnode(c.current,c.box,smerge(it.result,c.result))
+        case (ct:CTrunk[A],i:InCorrect[A]) => inode(i.current,i.box,smerge(ct.result,i.result))
+        case (ct:CTrunk[A],c:Correct[A]) => cnode(c.current,c.box,smerge(ct.result,c.result))
+        case (i:InCorrect[A],it:ITrunk[A]) => inode(i.current,i.box,smerge(i.result,it.result))
+        case (i:InCorrect[A],ct:CTrunk[A]) => inode(i.current,i.box,smerge(i.result,ct.result))
+        case (c:Correct[A],it:ITrunk[A]) => cnode(c.current,c.box,smerge(c.result,it.result))
+        case (c:Correct[A],ct:CTrunk[A]) => cnode(c.current,c.box,smerge(c.result,ct.result))
+        case (it:ITrunk[A],it2:ITrunk[A]) => ITrunk(smerge(it.result,it2.result))
+        case (it:ITrunk[A],ct:CTrunk[A]) => ITrunk(smerge(it.result,ct.result))
+        case (ct:CTrunk[A],ct2:CTrunk[A]) => ITrunk(smerge(ct.result,ct2.result))
+        case (ct:CTrunk[A],it:ITrunk[A]) => ITrunk(smerge(it.result,ct.result))
       }
     }
     
-    
+
+    def smerge[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[Pool[A]] = {
+      l match {
+        case Stream.Empty => r
+        case _ => l.head match {
+          case InCorrect(ilq, ilqs, ilr) =>
+            r match {
+              case Stream.Empty => l
+              case _ => r.head match {
+                case InCorrect(irq, irqs, irr) =>
+                  //rootValues
+                  val rvs: Stream[A] = f(Stream.cons(ilq, ilqs), Stream.cons(irq, irqs))
+                  rvs match {
+                    case Stream.Empty => Stream(itrunk(smerge(ilr, irr)(f))).append(smerge(l.tail, r.tail)(f))
+                    case _ => Stream(InCorrect(rvs.head, rvs.tail, smerge(ilr, irr)(f))).append(smerge(l.tail, r.tail)(f))
+                  }
+                case Correct(crq, crqs, crr) => (smerge(Stream(l.head), r.tail)(f)).append(smerge(l.tail, Stream(cnode(crq, crqs, crr)))(f))
+                case it: ITrunk[A] => Stream(inode(ilq, ilqs, smerge(ilr, it.result).append(r.tail)))
+                case ct: CTrunk[A] => Stream(inode(ilq, ilqs, ilr)).append(ct.result).append(r.tail)
+              }
+            }
+          case Correct(clq, clqs, clr) => r match {
+            case Stream.Empty =>
+              println("Left is shown")
+              l
+            case _ => r.head match {
+              case i: InCorrect[A] => (smerge(l.tail, Stream(i))(f)).append(smerge(Stream(l.head), r.tail)(f))
+              case Correct(crq, crqs, crr) =>
+                //rootValues
+                val rvs = f(Stream.cons(clq, clqs), Stream.cons(crq, crqs))
+                rvs match {
+                  case Stream.Empty => (smerge(l.tail, r.tail)(f)).append(Stream(ctrunk(smerge(l.head.result, crr)(f))))
+                  case _ => (smerge(l.tail, r.tail)(f)).append(Stream(cnode(rvs.head, rvs.tail, smerge(l.head.result, crr)(f))))
+                }
+
+              case it: ITrunk[A] => smerge(it.result, Stream.cons(cnode(clq, clqs, clr), r.tail))
+//              case ct: CTrunk[A] => smerge(l.tail, r.tail).append(Stream(cnode(clq, clqs, smerge(ct.result, clr))))
+              case ct: CTrunk[A] => Stream(cnode(clq, clqs, smerge(ct.result, clr))).append(smerge(l.tail, r.tail))
+            }
+          }
+          case lit: ITrunk[A] => r match {
+            case Stream.Empty => l
+            case _ => r.head match {
+              case InCorrect(irq, irqs, irr) => Stream(inode(irq, irqs,smerge(lit.result,irr))).append(smerge(l.tail,r.tail))
+              case Correct(crq, crqs, crr) => Stream(cnode(crq,crqs,smerge(lit.result,crr))).append(smerge(l.tail,r.tail))
+              case rit: ITrunk[A] => println("merging itrunk - itrunk")
+              Stream(itrunk((smerge(lit.result,rit.result)))).append(smerge(l.tail,r.tail))
+              case rct: CTrunk[A] => println("merging itrunk - ctrunk")
+              Stream(lit,rct).append(smerge(l.tail,r.tail))
+            }
+          }
+          case lct: CTrunk[A] => r match {
+            case Stream.Empty => l
+            case _ => r.head match {
+              case InCorrect(irq, irqs, irr) => println("merging ctrunk - inode")
+              Stream(inode(irq, irqs,smerge(irr,lct.result))).append(smerge(l.tail,r.tail))
+              case Correct(crq, crqs, crr) => println("merging ctrunk - cnode")
+              Stream(cnode(crq,crqs,smerge(lct.result,crr))).append(smerge(l.tail,r.tail))
+              case rit: ITrunk[A] => println("merging ctrunk - itrunk")
+                Stream(rit,lct).append(smerge(l.tail,r.tail))
+              case rct: CTrunk[A] => println("merging ctrunk - ctrunk")
+                smerge(lct.result,rct.result)
+            }
+          }
+        }
+      }
+    }
 
     def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[Pool[B]]): Stream[Pool[B]] = {
       def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
