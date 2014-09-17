@@ -8,7 +8,6 @@ import pool.ResultItems.Answer
 import pool.ResultItems.Correct
 import pool.ResultItems.InCorrect
 import pool.ResultItems.Pool
-import scalaz.std.stream.streamMonoid
 
 object PoolSpec extends Specification {
 
@@ -45,6 +44,24 @@ object PoolSpec extends Specification {
   val s4_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(5, Stream(6), Stream(ileaf(4), cleaf(2)))))
   val s5_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(6, Stream.Empty, Stream(ileaf(4), cnode(2, Stream(5), Stream.Empty)))))
   val s6_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), ctrunk(Stream(inode(4, Stream(6), Stream.Empty), cnode(2, Stream(5), Stream.Empty)))))
+
+  "show should work" in {
+
+    val s1 = inode(1, Stream(2), Stream.Empty)
+    val s2 = ileaf(4)
+    val s3 = cnode(1, Stream(2), Stream.Empty)
+    val s4 = cleaf(4)
+    val s5 = itrunk(Stream(inode(3, Stream.Empty, Stream(cleaf(1))), cnode(2, Stream(4, 5, 6), Stream.Empty)))
+    val s6 = ctrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(2, Stream(4, 5, 6), Stream.Empty)))
+
+    s1.show must_== "I"
+    s2.show must_== "I"
+    s3.show must_== "C"
+    s4.show must_== "C"
+    s5.show must_== "I"
+    s6.show must_== "C"
+
+  }
 
   //Stream merge => merge of the results
   "smerge should work" in {
@@ -136,19 +153,16 @@ object PoolSpec extends Specification {
     m5 must_== itrunk(Stream(ileaf(4), cleaf(14)))
     m6 must_== itrunk(Stream(ileaf(4), cleaf(14)))
     m7 must_== result
-    result.pmap("")(path(_))((x: String, y: String) => x + y).flatten must_== 
+    result.nodeMap("")(path(_))(_ + _).flatten.filter(p => !(p._1).isEmpty) must_==
       Stream(
-          (Stream(), "I"),
-          (Stream(), "II"), 
-          (Stream(8), "III"),
-          (Stream(1), "IIII"),
-          (Stream(3), "IIIC"), 
-          (Stream(2,4,9), "IIC"), 
-          (Stream(10,11), "IC"), 
-          (Stream(5), "ICI"), 
-          (Stream(6), "ICC")
-      )
-    
+        (Stream(8), "III"),
+        (Stream(1), "IIII"),
+        (Stream(3), "IIIC"),
+        (Stream(2, 4, 9), "IIC"),
+        (Stream(10, 11), "IC"),
+        (Stream(5), "ICI"),
+        (Stream(6), "ICC"))
+
   }
 
   "map should work" in {
@@ -160,15 +174,20 @@ object PoolSpec extends Specification {
     s0 map add1 must_== inode(2, Stream(3, 4, 5, 6, 7), Stream.Empty)
     s1 map add1 must_== inode(3, Stream(4, 5, 6, 7), Stream(ileaf(2)))
     s2 map add1 must_== inode(4, Stream(5, 6, 7), Stream(ileaf(2), cleaf(3)))
+    s6_2 map add1 must_== itrunk(Stream(itrunk(Stream(ileaf(4), cleaf(2))), ctrunk(Stream(inode(5, Stream(7), Stream.Empty), cnode(3, Stream(6), Stream.Empty)))))
   }
 
-  "path should work" in {
-    s0.pmap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
-    s1.pmap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
-    s1.pmap("")(path(_))((x: String, y: String) => x + y).flatten must_== Stream((Stream(2, 3, 4, 5, 6), "I"), (Stream(1), "II"))
-    
+  "nodeMap should work" in {
+    s0.nodeMap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
+    s1.nodeMap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
+    s1.nodeMap("")(path(_))((x: String, y: String) => x + y).flatten must_== Stream((Stream(2, 3, 4, 5, 6), "I"), (Stream(1), "II"))
   }
 
+  "cobind should work" in {
+    s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
+    s6.cobind(path(_)) must_== inode((Stream.Empty,"I"),Stream.Empty,Stream(ileaf((Stream(1,3),"I")), cleaf((Stream(2,4, 5, 6),"C"))))
+  }
+  
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
     s1.flatten must_== Stream(2, 3, 4, 5, 6, 1)
@@ -184,55 +203,48 @@ object PoolSpec extends Specification {
   "foldRight should work" in {
     val estream: Stream[Int] = Stream.Empty
     val fr = s0.foldRight(estream)((a, b) => Stream.cons(a, b))
+    val fr1 = s1.foldRight(estream)((a, b) => Stream.cons(a, b))
+    val fr2 = s2.foldRight(estream)((a, b) => Stream.cons(a, b))
+    val fr3 = s3.foldRight(estream)((a, b) => Stream.cons(a, b))
+    val fr62 = s6_2.foldRight(estream)(Stream.cons(_, _))
     fr must_== Stream(1, 2, 3, 4, 5, 6)
+    fr1 must_== Stream(2, 3, 4, 5, 6,1)
+    fr2 must_== Stream(3, 4, 5, 6,1,2)
+    fr3 must_== Stream(4, 5, 6,1,3,2)
+    fr62 must_== Stream(3,1,4, 6,2,5)
   }
 
   "levels should work" in {
     s2.levels must_== Stream(Stream(Stream(3, 4, 5, 6)), Stream(Stream(1), Stream(2)))
   }
 
-  "next should work" in {
-    s0.next.flatten.toList must_== List(1, 2, 3, 4, 5, 6)
-    s1.next.flatten.toList must_== List(2, 3, 4, 5, 6, 1)
-    s2.next.flatten.toList must_== List(3, 4, 5, 6, 1, 2)
-    s3.next.flatten.toList must_== List(4, 5, 6, 1, 3, 2)
+  "nextPool should work" in {
+    s0.nextPool.toList must_== List(1, 2, 3, 4, 5, 6)
+    s1.nextPool.toList must_== List(2, 3, 4, 5, 6)
+    s2.nextPool.toList must_== List(3, 4, 5, 6)
+    s3.nextPool.toList must_== List(4, 5, 6)
   }
 
-  "addAnswer should work" in {
-    Pool.updateResult(a1.r)(a1.q)(s0.result) must_== s1.result
-    Pool.updateResult(a2.r)(a2.q)(s1.result) must_== s2.result
-    Pool.updateResult(a3.r)(a3.q)(s2.result) must_== s3.result
-    Pool.updateResult(a4.r)(a4.q)(s3.result) must_== s4.result
-    Pool.updateResult(a5.r)(a5.q)(s4.result) must_== s5.result
-    Pool.updateResult(a6.r)(a6.q)(s5.result) must_== s6.result
+  "next should work" in {
+    s0.next must_== 1
+    s1.next must_== 2
+    s2.next must_== 3
+    s3.next must_== 4
   }
 
   "update should work" in {
-    val s01 = s0.update(a1)
-    val s02 = s1.update(a2)
-    val s03 = s2.update(a3)
-    val s04 = s3.update(a4)
-    val s05 = s4.update(a5)
-    val s06 = s5.update(a6)
-    val s01_2 = s6.update(a1_2)
-    val s02_2 = s1_2.update(a3_2)
-    val s03_2 = s2_2.update(a2_2)
-    val s04_2 = s3_2.update(a4_2)
-    val s05_2 = s4_2.update(a5_2)
-    val s06_2 = s5_2.update(a6_2)
-
-    s01 must_== s1
-    s02 must_== s2
-    s03 must_== s3
-    s04 must_== s4
-    s05 must_== s5
-    s06 must_== s6
-    s01_2 must_== s1_2
-    s02_2 must_== s2_2
-    s03_2 must_== s3_2
-    s04_2 must_== s4_2
-    s05_2 must_== s5_2
-    s06_2 must_== s6_2
+    s1 must_== s0.update(a1)
+    s2 must_== s1.update(a2)
+    s3 must_== s2.update(a3)
+    s4 must_== s3.update(a4)
+    s5 must_== s4.update(a5)
+    s6 must_== s5.update(a6)
+    s1_2 must_== s6.update(a1_2)
+    s2_2 must_== s1_2.update(a3_2)
+    s3_2 must_== s2_2.update(a2_2)
+    s4_2 must_== s3_2.update(a4_2)
+    s5_2 must_== s4_2.update(a5_2)
+    s6_2 must_== s5_2.update(a6_2)
   }
 
   //  "depth should work" in {
