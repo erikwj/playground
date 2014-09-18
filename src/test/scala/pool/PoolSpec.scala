@@ -153,6 +153,8 @@ object PoolSpec extends Specification {
     m5 must_== itrunk(Stream(ileaf(4), cleaf(14)))
     m6 must_== itrunk(Stream(ileaf(4), cleaf(14)))
     m7 must_== result
+
+    //    val buf = new collection.mutable.ListBuffer[String]
     result.nodeMap("")(path(_))(_ + _).flatten.filter(p => !(p._1).isEmpty) must_==
       Stream(
         (Stream(8), "III"),
@@ -185,9 +187,9 @@ object PoolSpec extends Specification {
 
   "cobind should work" in {
     s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
-    s6.cobind(path(_)) must_== inode((Stream.Empty,"I"),Stream.Empty,Stream(ileaf((Stream(1,3),"I")), cleaf((Stream(2,4, 5, 6),"C"))))
+    s6.cobind(path(_)) must_== inode((Stream.Empty, "I"), Stream.Empty, Stream(ileaf((Stream(1, 3), "I")), cleaf((Stream(2, 4, 5, 6), "C"))))
   }
-  
+
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
     s1.flatten must_== Stream(2, 3, 4, 5, 6, 1)
@@ -208,10 +210,10 @@ object PoolSpec extends Specification {
     val fr3 = s3.foldRight(estream)((a, b) => Stream.cons(a, b))
     val fr62 = s6_2.foldRight(estream)(Stream.cons(_, _))
     fr must_== Stream(1, 2, 3, 4, 5, 6)
-    fr1 must_== Stream(2, 3, 4, 5, 6,1)
-    fr2 must_== Stream(3, 4, 5, 6,1,2)
-    fr3 must_== Stream(4, 5, 6,1,3,2)
-    fr62 must_== Stream(3,1,4, 6,2,5)
+    fr1 must_== Stream(2, 3, 4, 5, 6, 1)
+    fr2 must_== Stream(3, 4, 5, 6, 1, 2)
+    fr3 must_== Stream(4, 5, 6, 1, 3, 2)
+    fr62 must_== Stream(3, 1, 4, 6, 2, 5)
   }
 
   "levels should work" in {
@@ -247,11 +249,34 @@ object PoolSpec extends Specification {
     s6_2 must_== s5_2.update(a6_2)
   }
 
-  //  "depth should work" in {
-  //    s0.depth must_== 1
-  //    s2.depth must_== 2
-  //    s7.depth must_== 3
-  //  }
+  "depth should work" in {
+    s0.depth must_== 0
+    s2.depth must_== 1
+    s6_2.depth must_== 2
+
+  }
+  "countInCorrect should work" in {
+    countInCorrect("ICCI") must_== Some(2)
+    countCorrect("ICCI") must_== Some(2)
+    countInCorrect("ICCCCCCCCI") must_== Some(2)
+    countCorrect("ICCCCCCCCI") must_== Some(8)
+    countInCorrect("II") must_== Some(2)
+    countCorrect("II") must_== None
+    countInCorrect("I") must_== Some(1)
+    countInCorrect("CC") must_== None
+
+  }
+
+  "countSequence should work" in {
+    //    def countCorrectSequence(z: String)(acc: Int)(out: Int)(s: List[Char])
+    countLongestCorrect("ICCCCCCCCI") must_== 8
+    countLongestCorrect("ICCCCICCCCI") must_== 4
+    countLongestCorrect("ICCCCCICCCI") must_== 5
+    countLongestCorrect("ICCCICCCCCI") must_== 5
+    countLongestInCorrect("ICCCICCCCCI") must_== 1
+    countLongestInCorrect("IIICCCICCCCCI") must_== 3
+  }
+
   //
   //  "leafs should work" in {
   ////    s0.paths.toList must_== List((Stream(1, 2, 3, 4, 5, 6), "<I>"))

@@ -11,6 +11,7 @@ object ResultItems {
 
   case class Answer[A](q: A, r: Boolean)
 
+  //HeadTailTree => HTTree
   sealed abstract class Pool[+A] {
     import Pool._
 
@@ -21,20 +22,21 @@ object ResultItems {
       case Correct(q, qs, _) => Stream.cons(q, qs)
       case _ => Stream.Empty
     }
-    
-    def rootValue:A = rootValues.head
 
-    //    def construct = this match {
-    //      case i: InCorrect[A] => (q:A,qs:Stream[A],r:Stream[Pool[A]]) => ipool(Some(q),qs,r)
-    //      case c: Correct[A] => (q:A,qs:Stream[A],r:Stream[Pool[A]]) => cpool(Some(q),qs,r)
-    //      case it: ITrunk[A] => (q:A,qs:Stream[A],r:Stream[Pool[A]]) => ipool(None,Stream.Empty,r)
-    //      case ct: CTrunk[A] => (q:A,qs:Stream[A],r:Stream[Pool[A]]) => cpool(None,Stream.Empty,r)
-    //    }
+    def rootValue: A = rootValues.head
 
     /**
      * Update: updates a Pool with an answers and returns a new Pool
      */
     def update[B >: A](a: Answer[B]) = emap(dropA(a.q))(updateR(a))
+
+    def fold[B](f: A => B)(g: (B, B) => B): B = result match {
+      case Stream.Empty => f(rootValue)
+      case Stream(l, r) => g(l.fold(f)(g), r.fold(f)(g))
+    }
+
+    def depth[B >: A]: Int =
+      fold(x => 0)((d1, d2) => 1 + (d1 max d2))
 
     def foldRight[B](z: => B)(f: (A, => B) => B): B =
       Foldable[Stream].foldRight(flatten, z)(f)
@@ -78,15 +80,10 @@ object ResultItems {
      * Map
      *
      */
-    def map[B](f: A => B): Pool[B] = {
-
+    def map[B >: A](f: A => B): Pool[B] = {
       lazy val resultMap = result map { _ map f }
-      this match {
-        case ITrunk(_) => itrunk(resultMap)
-        case CTrunk(_) => ctrunk(resultMap)
-        case InCorrect(_, _, _) => inode(f(rootValue), rootValues.tail map f, resultMap)
-        case Correct(_, _, _) => cnode(f(rootValue), rootValues.tail map f, resultMap)
-      }
+      val rvs = rootValues map f
+      construct(this, node(rvs, resultMap))
     }
 
     /**
@@ -97,32 +94,39 @@ object ResultItems {
      * - Left if element is not effected
      *
      */
+
     def emap[B](f: Stream[A] => scala.util.Either[Stream[B], Stream[B]])(g: Stream[Pool[B]] => Stream[Pool[B]]): Pool[B] = {
 
       //      def resultMap(r: Stream[Pool[A]]) = r map { _.emap(f)(g) }
       lazy val resultMap = result map { _.emap(f)(g) }
 
-      def node(rvs: Stream[B], res: Stream[Pool[B]])(n: (B, Stream[B], Stream[Pool[B]]) => Pool[B])(t: Stream[Pool[B]] => Pool[B]) = rvs match {
-        case Stream.Empty => t(res)
-        case _ => n(rvs.head, rvs.tail, res)
+      def rmap[B](e: scala.util.Either[Stream[B], Stream[B]])(rm: Stream[Pool[B]])(g: Stream[Pool[B]] => Stream[Pool[B]])(n: (B, Stream[B], Stream[Pool[B]]) => Pool[B])(t: Stream[Pool[B]] => Pool[B]) = {
+        def node(rvs: Stream[B], res: Stream[Pool[B]]) = rvs match {
+          case Stream.Empty => t(res)
+          case _ => n(rvs.head, rvs.tail, res)
+        }
+
+        val r = e match {
+          case Right(updated) => (updated, g(rm))
+          case Left(nochange) => (nochange, rm)
+        }
+        node(r._1, r._2)
       }
 
       this match {
         case ITrunk(r) => itrunk(resultMap)
         case CTrunk(r) => ctrunk(resultMap)
-        case InCorrect(_, _, _) =>
-          f(rootValues) match {
-            case Right(updated) => node(updated, g(resultMap))(inode(_, _, _))(itrunk(_))
-            case Left(nochange) => node(nochange, resultMap)(inode(_, _, _))(itrunk(_))
-          }
-
-        case Correct(_, _, _) =>
-          f(rootValues) match {
-            case Right(updated) => node(updated, g(resultMap))(cnode(_, _, _))(ctrunk(_))
-            case Left(nochange) => node(nochange, resultMap)(cnode(_, _, _))(ctrunk(_))
-          }
+        case InCorrect(_, _, _) => (rmap(f(rootValues))(resultMap)(g))(inode(_, _, _))(itrunk(_))
+        case Correct(_, _, _) => (rmap(f(rootValues))(resultMap)(g))(cnode(_, _, _))(ctrunk(_))
       }
     }
+
+    /**
+     *
+     * rVMap : Maps over all rootValues
+     *
+     */
+    def rVMap[B >: A](f: Stream[A] => Stream[B]): Pool[B] = construct(this, node(f(rootValues), result map { _.rVMap(f) }))
 
     /**
      *
@@ -135,17 +139,20 @@ object ResultItems {
      */
     def nodeMap[B, S, D](s: S)(f: Pool[A] => (B, S))(g: (S, S) => S): Pool[(B, S)] = {
 
-      def trace[B](p: Pool[A])(st: S)(f: Pool[A] => (B, S))(fp: ((B, S), Stream[Pool[(B, S)]]) => Pool[(B, S)]) = {
+      def trace[B](p: Pool[A])(f: Pool[A] => (B, S))(fp: ((B, S), Stream[Pool[(B, S)]]) => Pool[(B, S)]) = {
         val r = f(p)
         lazy val sit = g(s, r._2)
         fp((r._1, sit), p.result map { (_.nodeMap(sit)(f)(g)) })
       }
 
+      //          	  val r = f(this)
+      //    			  lazy val sit = g(s, r._2)
+      //    			  construct(this,node((r._1, sit), p.result map { (_.nodeMap(sit)(f)(g)) })
       this match {
-        case i: ITrunk[A] => trace(i)(s)(f)(inode(_, Stream.Empty, _))
-        case i: InCorrect[A] => trace(i)(s)(f)(inode(_, Stream.Empty, _))
-        case c: CTrunk[A] => trace(c)(s)(f)(cnode(_, Stream.Empty, _))
-        case c: Correct[A] => trace(c)(s)(f)(cnode(_, Stream.Empty, _))
+        case i: ITrunk[A] => trace(i)(f)(inode(_, Stream.Empty, _))
+        case i: InCorrect[A] => trace(i)(f)(inode(_, Stream.Empty, _))
+        case c: CTrunk[A] => trace(c)(f)(cnode(_, Stream.Empty, _))
+        case c: Correct[A] => trace(c)(f)(cnode(_, Stream.Empty, _))
       }
     }
 
@@ -165,7 +172,8 @@ object ResultItems {
      *   }
      *
      */
-    def cobind[B](f: Pool[A] => B): Pool[B] =
+
+    def cobind[B >: A](f: Pool[A] => B): Pool[B] =
       this match {
         case i: ITrunk[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
         case i: InCorrect[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
@@ -217,24 +225,44 @@ object ResultItems {
     /** Construct a Pool node with multiple values and no children. */
     def ileafs[A](root: => A, values: => Stream[A]): Pool[A] = inode(root, values, Stream.empty)
     def cleafs[A](root: => A, values: => Stream[A]): Pool[A] = cnode(root, values, Stream.empty)
-    //
-    //        def apply[A](q: => A, qs: => Stream[A]): Pool[A] = incorrect(q,qs, Stream.Empty)
+
+    /**
+     * Constructors
+     */
+    def node[A](rvs: Stream[A], res: => Stream[Pool[A]]): Either[Stream[Pool[A]], (A, Stream[A], Stream[Pool[A]])] = rvs match {
+      case Stream.Empty => Left(res)
+      case _ => Right(rvs.head, rvs.tail, res)
+    }
+
+    def construct[A](p: Pool[A], e: Either[Stream[Pool[A]], (A, Stream[A], Stream[Pool[A]])]) = {
+      (p, e) match {
+        case (i: InCorrect[A], Left(r)) => itrunk(r)
+        case (i: InCorrect[A], Right((q, qs, r))) => inode(q, qs, r)
+        case (i: ITrunk[A], Left(r)) => itrunk(r)
+        case (i: ITrunk[A], Right((q, qs, r))) => itrunk(r)
+        case (c: Correct[A], Left(r)) => ctrunk(r)
+        case (c: Correct[A], Right((q, qs, r))) => cnode(q, qs, r)
+        case (c: CTrunk[A], Left(r)) => ctrunk(r)
+        case (c: CTrunk[A], Right((q, qs, r))) => ctrunk(r)
+
+      }
+    }
 
     implicit def merge[A](l: Pool[A], r: => Pool[A])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Pool[A] = {
       lazy val resultMerge = smerge(l.result, r.result)
-      def equalMerge(t:(A,Stream[A],Stream[Pool[A]]) => Pool[A]) = t(l.rootValue,f(l.rootValues.tail, r.rootValues), resultMerge)
-      def bTrunkMerge(b:Pool[A])(t:(A,Stream[A],Stream[Pool[A]]) => Pool[A]) = t(b.rootValue,b.rootValues.tail, resultMerge)
-      
+      def equalMerge(t: (A, Stream[A], Stream[Pool[A]]) => Pool[A]) = t(l.rootValue, f(l.rootValues.tail, r.rootValues), resultMerge)
+      def nodeTrunkMerge(b: Pool[A])(t: (A, Stream[A], Stream[Pool[A]]) => Pool[A]) = t(b.rootValue, b.rootValues.tail, resultMerge)
+
       (l, r) match {
-        case (i: InCorrect[A], i2: InCorrect[A]) =>  equalMerge(inode(_,_,_))
-        case (c: Correct[A], c2: Correct[A]) =>      equalMerge(cnode(_,_,_))
-        case (i: InCorrect[A], c: Correct[A]) =>  itrunk(smerge(Stream(l), Stream(r)))
-        case (c: Correct[A], i: InCorrect[A]) =>  itrunk(smerge(Stream(r), Stream(l)))
-        case (i: InCorrect[A], _) =>              bTrunkMerge(i)(inode(_, _,_))
-        case (c: Correct[A], _) =>                bTrunkMerge(c)(inode(_, _,_))
-        case (_, i: InCorrect[A]) =>              bTrunkMerge(i)(inode(_, _,_))
-        case (_, c: Correct[A]) =>                bTrunkMerge(c)(inode(_, _,_))
-        case (_, _) =>                            itrunk(resultMerge)
+        case (i: InCorrect[A], i2: InCorrect[A]) => equalMerge(inode(_, _, _))
+        case (c: Correct[A], c2: Correct[A]) => equalMerge(cnode(_, _, _))
+        case (i: InCorrect[A], c: Correct[A]) => itrunk(smerge(Stream(l), Stream(r)))
+        case (c: Correct[A], i: InCorrect[A]) => itrunk(smerge(Stream(r), Stream(l)))
+        case (i: InCorrect[A], _) => nodeTrunkMerge(i)(inode(_, _, _))
+        case (c: Correct[A], _) => nodeTrunkMerge(c)(cnode(_, _, _))
+        case (_, i: InCorrect[A]) => nodeTrunkMerge(i)(inode(_, _, _))
+        case (_, c: Correct[A]) => nodeTrunkMerge(c)(cnode(_, _, _))
+        case (_, _) => itrunk(resultMerge)
       }
     }
 
@@ -261,16 +289,17 @@ object ResultItems {
               case _ =>
                 lazy val resultMerge = smerge(l.head.result, r.head.result)
                 r.head match {
-                  case i:InCorrect[A] =>
+                  case i: InCorrect[A] =>
                     //rootValues
                     val rvs: Stream[A] = f(l.head.rootValues, r.head.rootValues)
                     Stream.cons(InCorrect(rvs.head, rvs.tail, resultMerge), smerge(l.tail, r.tail)(f))
-                  case c:Correct[A] => (smerge(Stream(l.head), r.tail)(f)).append(smerge(l.tail, Stream(c))(f))
+                  case c: Correct[A] => (smerge(Stream(l.head), r.tail)(f)).append(smerge(l.tail, Stream(c))(f))
                   case it: ITrunk[A] => Stream(inode(i.rootValue, i.rootValues.tail, resultMerge.append(r.tail)))
                   case ct: CTrunk[A] => Stream(inode(i.rootValue, i.rootValues.tail, i.result)).append(ct.result).append(r.tail)
                 }
+              //                Stream.cons(merge(l.head,r.head),Stream(merge(l.tail.head,r.tail.head)))
             }
-          case c:Correct[A] => r match {
+          case c: Correct[A] => r match {
             case Stream.Empty => l
             case _ =>
               lazy val resultMerge = smerge(l.head.result, r.head.result)
@@ -281,7 +310,7 @@ object ResultItems {
                   val rvs = f(l.head.rootValues, r.head.rootValues)
                   (smerge(l.tail, r.tail)(f)).append(Stream(cnode(rvs.head, rvs.tail, resultMerge)))
                 case it: ITrunk[A] => smerge(it.result, Stream.cons(c, r.tail))
-                case ct: CTrunk[A] => Stream.cons(cnode(c.rootValue,c.rootValues.tail, resultMerge), smerge(l.tail, r.tail))
+                case ct: CTrunk[A] => Stream.cons(cnode(c.rootValue, c.rootValues.tail, resultMerge), smerge(l.tail, r.tail))
               }
           }
           case lit: ITrunk[A] => r match {
@@ -316,7 +345,24 @@ object ResultItems {
       }
     }
 
-    def path[A](p: Pool[A]): (Stream[A], String) = (p.rootValues, p.show)
+    def path[A, K <: A](p: Pool[K]): (Stream[K], String) = (p.rootValues, p.show)
+
+    def countAnswers(s: String) = s.groupBy(_.toChar).map(p => (p._1, p._2.length))
+
+    def countCorrect(s: String) = countAnswers(s).get('C')
+    def countInCorrect(s: String) = countAnswers(s).get('I')
+
+    def countLongestSequence(z: Char)(acc: Int)(out: Int)(s: List[Char]): Int = s match {
+      case Nil => out
+      case h :: t if h == z =>
+        val tot = acc + 1
+        if (tot > out) countLongestSequence(z)(tot)(tot)(t)
+        else countLongestSequence(z)(tot)(out)(t)
+      case h :: t => countLongestSequence(z)(0)(out)(t)
+    }
+
+    def countLongestCorrect(s: String) = countLongestSequence('C')(0)(0)(s.toList)
+    def countLongestInCorrect(s: String) = countLongestSequence('I')(0)(0)(s.toList)
 
     def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[Pool[B]]): Stream[Pool[B]] = {
       def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
