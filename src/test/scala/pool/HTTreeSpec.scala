@@ -4,14 +4,11 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 import std.stream.{ streamInstance, streamMonoid }
-import pool.ResultItems.Answer
-import pool.ResultItems.Correct
-import pool.ResultItems.InCorrect
-import pool.ResultItems.Pool
+import pool.HTTree.Answer
 
-object PoolSpec extends Specification {
+object HTTreeSpec extends Specification {
 
-  import Pool._
+  import HTTree._
 
   //First round of answers
   val a1 = Answer(1, false)
@@ -72,12 +69,12 @@ object PoolSpec extends Specification {
     val s3 = Stream(cleaf(14))
 
     //
-    val m = Pool.smerge(s1, s2)
-    val m2 = Pool.smerge(s2, s1)
-    val m3 = Pool.smerge(s1, s3)
-    val m4 = Pool.smerge(s3, s1)
-    val m5 = Pool.smerge(s2, s3)
-    val m6 = Pool.smerge(s3, s2)
+    val m = smerge(s1, s2)
+    val m2 = smerge(s2, s1)
+    val m3 = smerge(s1, s3)
+    val m4 = smerge(s3, s1)
+    val m5 = smerge(s2, s3)
+    val m6 = smerge(s3, s2)
 
     m must_== Stream(inode(1, Stream(2, 4), Stream.Empty), cleaf(3))
     m2 must_== Stream(inode(4, Stream(1, 2), Stream.Empty), cleaf(3))
@@ -134,17 +131,17 @@ object PoolSpec extends Specification {
         ileaf(5), cleaf(6)))))
 
     //
-    val m = Pool.merge(s1, s2)
+    val m = merge(s1, s2)
 
     //TODO: how to avoid this
     //			  val mstring = Pool.merge[Int](s1, s2string)
 
-    val m2 = Pool.merge(s2, s1)
-    val m3 = Pool.merge(s1, s3)
-    val m4 = Pool.merge(s3, s1)
-    val m5 = Pool.merge(s2, s3)
-    val m6 = Pool.merge(s3, s2)
-    val m7 = Pool.merge(left, right)
+    val m2 = merge(s2, s1)
+    val m3 = merge(s1, s3)
+    val m4 = merge(s3, s1)
+    val m5 = merge(s2, s3)
+    val m6 = merge(s3, s2)
+    val m7 = merge(left, right)
 
     m must_== inode(1, Stream(2, 4), Stream.Empty)
     m2 must_== inode(4, Stream(1, 2), Stream.Empty)

@@ -7,15 +7,13 @@ import std.string.stringInstance
 
 import scala.util.Either
 
-object ResultItems {
 
-  case class Answer[A](q: A, r: Boolean)
 
   //HeadTailTree => HTTree
-  sealed abstract class Pool[+A] {
-    import Pool._
+  sealed abstract class HTTree[+A] {
+    import HTTree._
 
-    def result: Stream[Pool[A]]
+    def result: Stream[HTTree[A]]
 
     def rootValues: Stream[A] = this match {
       case InCorrect(q, qs, _) => Stream.cons(q, qs)
@@ -26,7 +24,7 @@ object ResultItems {
     def rootValue: A = rootValues.head
 
     /**
-     * Update: updates a Pool with an answers and returns a new Pool
+     * Update: updates a HTTree with an answers and returns a new HTTree
      */
     def update[B >: A](a: Answer[B]) = emap(dropA(a.q))(updateR(a))
 
@@ -48,12 +46,12 @@ object ResultItems {
      *
      */
     def flatten: Stream[A] = {
-      def squish(pool: Pool[A], xs: Stream[A]): Stream[A] = {
+      def squish(pool: HTTree[A], xs: Stream[A]): Stream[A] = {
         val rvs = pool.rootValues
         rvs match {
           case Stream.Empty => (result map { _.flatten }).flatten
 
-          case _ => rvs.init.append(Stream.cons(rvs.last, Foldable[Stream].foldr[Pool[A], Stream[A]](pool.result, xs)(a => b => squish(a, b))))
+          case _ => rvs.init.append(Stream.cons(rvs.last, Foldable[Stream].foldr[HTTree[A], Stream[A]](pool.result, xs)(a => b => squish(a, b))))
         }
       }
       squish(this, Stream.Empty)
@@ -65,8 +63,8 @@ object ResultItems {
      *
      */
     def levels = {
-      val f = (s: Stream[Pool[A]]) => {
-        Foldable[Stream].foldMap(s)((_: Pool[A]).result)
+      val f = (s: Stream[HTTree[A]]) => {
+        Foldable[Stream].foldMap(s)((_: HTTree[A]).result)
       }
       Stream.iterate(Stream(this))(f) takeWhile (!_.isEmpty) map (_ map (_.rootValues))
     }
@@ -80,7 +78,7 @@ object ResultItems {
      * Map
      *
      */
-    def map[B >: A](f: A => B): Pool[B] = {
+    def map[B >: A](f: A => B): HTTree[B] = {
       lazy val resultMap = result map { _ map f }
       val rvs = rootValues map f
       construct(this, node(rvs, resultMap))
@@ -95,13 +93,13 @@ object ResultItems {
      *
      */
 
-    def emap[B](f: Stream[A] => scala.util.Either[Stream[B], Stream[B]])(g: Stream[Pool[B]] => Stream[Pool[B]]): Pool[B] = {
+    def emap[B](f: Stream[A] => scala.util.Either[Stream[B], Stream[B]])(g: Stream[HTTree[B]] => Stream[HTTree[B]]): HTTree[B] = {
 
-      //      def resultMap(r: Stream[Pool[A]]) = r map { _.emap(f)(g) }
+      //      def resultMap(r: Stream[HTTree[A]]) = r map { _.emap(f)(g) }
       lazy val resultMap = result map { _.emap(f)(g) }
 
-      def rmap[B](e: scala.util.Either[Stream[B], Stream[B]])(rm: Stream[Pool[B]])(g: Stream[Pool[B]] => Stream[Pool[B]])(n: (B, Stream[B], Stream[Pool[B]]) => Pool[B])(t: Stream[Pool[B]] => Pool[B]) = {
-        def node(rvs: Stream[B], res: Stream[Pool[B]]) = rvs match {
+      def rmap[B](e: scala.util.Either[Stream[B], Stream[B]])(rm: Stream[HTTree[B]])(g: Stream[HTTree[B]] => Stream[HTTree[B]])(n: (B, Stream[B], Stream[HTTree[B]]) => HTTree[B])(t: Stream[HTTree[B]] => HTTree[B]) = {
+        def node(rvs: Stream[B], res: Stream[HTTree[B]]) = rvs match {
           case Stream.Empty => t(res)
           case _ => n(rvs.head, rvs.tail, res)
         }
@@ -126,20 +124,20 @@ object ResultItems {
      * rVMap : Maps over all rootValues
      *
      */
-    def rVMap[B >: A](f: Stream[A] => Stream[B]): Pool[B] = construct(this, node(f(rootValues), result map { _.rVMap(f) }))
+    def rVMap[B >: A](f: Stream[A] => Stream[B]): HTTree[B] = construct(this, node(f(rootValues), result map { _.rVMap(f) }))
 
     /**
      *
-     * PoolMap : Maps over all elements
+     * HTTreeMap : Maps over all elements
      *
      * /** Binds the given function across all the subtrees of this tree. */
      * def cobind[B](f: Tree[A] => B): Tree[B] = unfoldTree(this)(t => (f(t), () => t.subForest))
      *
      *
      */
-    def nodeMap[B, S, D](s: S)(f: Pool[A] => (B, S))(g: (S, S) => S): Pool[(B, S)] = {
+    def nodeMap[B, S, D](s: S)(f: HTTree[A] => (B, S))(g: (S, S) => S): HTTree[(B, S)] = {
 
-      def trace[B](p: Pool[A])(f: Pool[A] => (B, S))(fp: ((B, S), Stream[Pool[(B, S)]]) => Pool[(B, S)]) = {
+      def trace[B](p: HTTree[A])(f: HTTree[A] => (B, S))(fp: ((B, S), Stream[HTTree[(B, S)]]) => HTTree[(B, S)]) = {
         val r = f(p)
         lazy val sit = g(s, r._2)
         fp((r._1, sit), p.result map { (_.nodeMap(sit)(f)(g)) })
@@ -173,7 +171,7 @@ object ResultItems {
      *
      */
 
-    def cobind[B >: A](f: Pool[A] => B): Pool[B] =
+    def cobind[B >: A](f: HTTree[A] => B): HTTree[B] =
       this match {
         case i: ITrunk[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
         case i: InCorrect[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
@@ -190,51 +188,53 @@ object ResultItems {
   }
 
   //Can be a leaf with empty result or a branch with some result
-  case class InCorrect[A](current: A, box: Stream[A], result: Stream[Pool[A]]) extends Pool[A]
-  case class Correct[A](current: A, box: Stream[A], result: Stream[Pool[A]]) extends Pool[A]
+  case class InCorrect[A](current: A, box: Stream[A], result: Stream[HTTree[A]]) extends HTTree[A]
+  case class Correct[A](current: A, box: Stream[A], result: Stream[HTTree[A]]) extends HTTree[A]
   //Trunks have no leafs and thus no values
-  case class ITrunk[A](result: Stream[Pool[A]]) extends Pool[A]
-  case class CTrunk[A](result: Stream[Pool[A]]) extends Pool[A]
+  case class ITrunk[A](result: Stream[HTTree[A]]) extends HTTree[A]
+  case class CTrunk[A](result: Stream[HTTree[A]]) extends HTTree[A]
 
-  object Pool {
+  object HTTree {
+    
+      case class Answer[A](q: A, r: Boolean)
 
     //
     /** Construct a new Trunk with no values. */
-    def itrunk[A](result: => Stream[Pool[A]]): Pool[A] = ITrunk(result)
-    def ctrunk[A](result: => Stream[Pool[A]]): Pool[A] = CTrunk(result)
+    def itrunk[A](result: => Stream[HTTree[A]]): HTTree[A] = ITrunk(result)
+    def ctrunk[A](result: => Stream[HTTree[A]]): HTTree[A] = CTrunk(result)
     //
-    /** Construct a new Pool node. */
-    def ipool[A](root: Option[A], box: Stream[A], result: => Stream[Pool[A]]): Pool[A] = root match {
+    /** Construct a new HTTree node. */
+    def ipool[A](root: Option[A], box: Stream[A], result: => Stream[HTTree[A]]): HTTree[A] = root match {
       case Some(r) => inode(r, box, result)
       case _ => itrunk(result)
     }
 
-    def cpool[A](root: Option[A], box: Stream[A], result: => Stream[Pool[A]]): Pool[A] = root match {
+    def cpool[A](root: Option[A], box: Stream[A], result: => Stream[HTTree[A]]): HTTree[A] = root match {
       case Some(r) => cnode(r, box, result)
       case _ => ctrunk(result)
     }
 
-    /** Construct a new Pool node. */
-    def inode[A](root: => A, box: => Stream[A], result: => Stream[Pool[A]]): Pool[A] = InCorrect(root, box, result)
-    def cnode[A](root: => A, box: => Stream[A], result: => Stream[Pool[A]]): Pool[A] = Correct(root, box, result)
+    /** Construct a new HTTree node. */
+    def inode[A](root: => A, box: => Stream[A], result: => Stream[HTTree[A]]): HTTree[A] = InCorrect(root, box, result)
+    def cnode[A](root: => A, box: => Stream[A], result: => Stream[HTTree[A]]): HTTree[A] = Correct(root, box, result)
 
-    /** Construct a Pool node with one value and no children. */
-    def ileaf[A](root: => A): Pool[A] = inode(root, Stream.empty, Stream.empty)
-    def cleaf[A](root: => A): Pool[A] = cnode(root, Stream.empty, Stream.empty)
+    /** Construct a HTTree node with one value and no children. */
+    def ileaf[A](root: => A): HTTree[A] = inode(root, Stream.empty, Stream.empty)
+    def cleaf[A](root: => A): HTTree[A] = cnode(root, Stream.empty, Stream.empty)
     //
-    /** Construct a Pool node with multiple values and no children. */
-    def ileafs[A](root: => A, values: => Stream[A]): Pool[A] = inode(root, values, Stream.empty)
-    def cleafs[A](root: => A, values: => Stream[A]): Pool[A] = cnode(root, values, Stream.empty)
+    /** Construct a HTTree node with multiple values and no children. */
+    def ileafs[A](root: => A, values: => Stream[A]): HTTree[A] = inode(root, values, Stream.empty)
+    def cleafs[A](root: => A, values: => Stream[A]): HTTree[A] = cnode(root, values, Stream.empty)
 
     /**
      * Constructors
      */
-    def node[A](rvs: Stream[A], res: => Stream[Pool[A]]): Either[Stream[Pool[A]], (A, Stream[A], Stream[Pool[A]])] = rvs match {
+    def node[A](rvs: Stream[A], res: => Stream[HTTree[A]]): Either[Stream[HTTree[A]], (A, Stream[A], Stream[HTTree[A]])] = rvs match {
       case Stream.Empty => Left(res)
       case _ => Right(rvs.head, rvs.tail, res)
     }
 
-    def construct[A](p: Pool[A], e: Either[Stream[Pool[A]], (A, Stream[A], Stream[Pool[A]])]) = {
+    def construct[A](p: HTTree[A], e: Either[Stream[HTTree[A]], (A, Stream[A], Stream[HTTree[A]])]) = {
       (p, e) match {
         case (i: InCorrect[A], Left(r)) => itrunk(r)
         case (i: InCorrect[A], Right((q, qs, r))) => inode(q, qs, r)
@@ -248,10 +248,10 @@ object ResultItems {
       }
     }
 
-    implicit def merge[A](l: Pool[A], r: => Pool[A])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Pool[A] = {
+    implicit def merge[A](l: HTTree[A], r: => HTTree[A])(implicit f: (Stream[A], Stream[A]) => Stream[A]): HTTree[A] = {
       lazy val resultMerge = smerge(l.result, r.result)
-      def equalMerge(t: (A, Stream[A], Stream[Pool[A]]) => Pool[A]) = t(l.rootValue, f(l.rootValues.tail, r.rootValues), resultMerge)
-      def nodeTrunkMerge(b: Pool[A])(t: (A, Stream[A], Stream[Pool[A]]) => Pool[A]) = t(b.rootValue, b.rootValues.tail, resultMerge)
+      def equalMerge(t: (A, Stream[A], Stream[HTTree[A]]) => HTTree[A]) = t(l.rootValue, f(l.rootValues.tail, r.rootValues), resultMerge)
+      def nodeTrunkMerge(b: HTTree[A])(t: (A, Stream[A], Stream[HTTree[A]]) => HTTree[A]) = t(b.rootValue, b.rootValues.tail, resultMerge)
 
       (l, r) match {
         case (i: InCorrect[A], i2: InCorrect[A]) => equalMerge(inode(_, _, _))
@@ -266,7 +266,7 @@ object ResultItems {
       }
     }
 
-    //    def smerge[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[Pool[A]] = {
+    //    def smerge[A](l: Stream[HTTree[A]], r: => Stream[HTTree[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[HTTree[A]] = {
     //      l match {
     //        case Stream.Empty => r
     //        case _ =>
@@ -279,7 +279,7 @@ object ResultItems {
     //      }
     //    }
 
-    def smerge[A](l: Stream[Pool[A]], r: => Stream[Pool[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[Pool[A]] = {
+    def smerge[A](l: Stream[HTTree[A]], r: => Stream[HTTree[A]])(implicit f: (Stream[A], Stream[A]) => Stream[A]): Stream[HTTree[A]] = {
       l match {
         case Stream.Empty => r
         case _ => l.head match {
@@ -345,12 +345,9 @@ object ResultItems {
       }
     }
 
-    def path[A, K <: A](p: Pool[K]): (Stream[K], String) = (p.rootValues, p.show)
+    def path[A, K <: A](p: HTTree[K]): (Stream[K], String) = (p.rootValues, p.show)
 
     def countAnswers(s: String) = s.groupBy(_.toChar).map(p => (p._1, p._2.length))
-
-    def countCorrect(s: String) = countAnswers(s).get('C')
-    def countInCorrect(s: String) = countAnswers(s).get('I')
 
     def countLongestSequence(z: Char)(acc: Int)(out: Int)(s: List[Char]): Int = s match {
       case Nil => out
@@ -361,17 +358,19 @@ object ResultItems {
       case h :: t => countLongestSequence(z)(0)(out)(t)
     }
 
+    def countCorrect(s: String) = countAnswers(s).get('C')
+    def countInCorrect(s: String) = countAnswers(s).get('I')
     def countLongestCorrect(s: String) = countLongestSequence('C')(0)(0)(s.toList)
     def countLongestInCorrect(s: String) = countLongestSequence('I')(0)(0)(s.toList)
 
-    def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[Pool[B]]): Stream[Pool[B]] = {
-      def appendInCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
+    def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[HTTree[B]]): Stream[HTTree[B]] = {
+      def appendInCorrect[B >: A](p: HTTree[B], a: B): HTTree[B] =
         p match {
           case i: InCorrect[A] => InCorrect(i.current, i.box #::: Stream(a), i.result)
           case _ => ileaf(a)
         }
 
-      def appendCorrect[B >: A](p: Pool[B], a: B): Pool[B] =
+      def appendCorrect[B >: A](p: HTTree[B], a: B): HTTree[B] =
         p match {
           case c: Correct[A] => Correct(c.current, c.box #::: Stream(a), c.result)
           case _ => cleaf(a)
@@ -399,4 +398,3 @@ object ResultItems {
 
   }
 
-}
