@@ -42,6 +42,23 @@ object HTTreeSpec extends Specification {
   val s5_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(6, Stream.Empty, Stream(ileaf(4), cnode(2, Stream(5), Stream.Empty)))))
   val s6_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), ctrunk(Stream(inode(4, Stream(6), Stream.Empty), cnode(2, Stream(5), Stream.Empty)))))
 
+  /**
+   *                        result
+   *                        /     \
+   *                       /      10,11
+   *                      / \      /\
+   *                     8 2,4,9  5  6
+   *                    /\
+   *                   1  3
+   */
+  val result = itrunk(Stream(
+    itrunk(Stream(
+      inode(8, Stream.Empty, Stream(
+        ileaf(1), cleaf(3))),
+      cleafs(2, Stream(4, 9)))),
+    cnode(10, Stream(11), Stream(
+      ileaf(5), cleaf(6)))))
+
   "show should work" in {
 
     val s1 = inode(1, Stream(2), Stream.Empty)
@@ -113,27 +130,10 @@ object HTTreeSpec extends Specification {
      */
     val right = itrunk(Stream(itrunk(Stream(ileaf(8), cleaf(9))), cleafs(10, Stream(11))))
 
-    /**
-     *                        result
-     *                        /     \
-     *                       /      10,11
-     *                      / \      /\
-     *                     8 2,4,9  5  6
-     *                    /\
-     *                   1  3
-     */
-    val result = itrunk(Stream(
-      itrunk(Stream(
-        inode(8, Stream.Empty, Stream(
-          ileaf(1), cleaf(3))),
-        cleafs(2, Stream(4, 9)))),
-      cnode(10, Stream(11), Stream(
-        ileaf(5), cleaf(6)))))
-
     //
     val m = merge(s1, s2)
 
-    //TODO: how to avoid this
+    //TODO: how to avoid this String should not be accepted
     //			  val mstring = Pool.merge[Int](s1, s2string)
 
     val m2 = merge(s2, s1)
@@ -152,15 +152,6 @@ object HTTreeSpec extends Specification {
     m7 must_== result
 
     //    val buf = new collection.mutable.ListBuffer[String]
-    result.nodeMap("")(path(_))(_ + _).flatten.filter(p => !(p._1).isEmpty) must_==
-      Stream(
-        (Stream(8), "III"),
-        (Stream(1), "IIII"),
-        (Stream(3), "IIIC"),
-        (Stream(2, 4, 9), "IIC"),
-        (Stream(10, 11), "IC"),
-        (Stream(5), "ICI"),
-        (Stream(6), "ICC"))
 
   }
 
@@ -177,12 +168,25 @@ object HTTreeSpec extends Specification {
   }
 
   "nodeMap should work" in {
-    s0.nodeMap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
-    s1.nodeMap("")(path(_))((x: String, y: String) => x + y) must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
-    s1.nodeMap("")(path(_))((x: String, y: String) => x + y).flatten must_== Stream((Stream(2, 3, 4, 5, 6), "I"), (Stream(1), "II"))
+    s0.paths must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
+    s1.paths must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
+
+    result.paths.flatten.filter(p => !(p._1).isEmpty) must_==
+      Stream(
+        (Stream(8), "III"),
+        (Stream(1), "IIII"),
+        (Stream(3), "IIIC"),
+        (Stream(2, 4, 9), "IIC"),
+        (Stream(10, 11), "IC"),
+        (Stream(5), "ICI"),
+        (Stream(6), "ICC"))
+        
+
   }
 
   "cobind should work" in {
+    val c: HTTree[String] = s6.cobind(_.show)
+
     s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
     s6.cobind(path(_)) must_== inode((Stream.Empty, "I"), Stream.Empty, Stream(ileaf((Stream(1, 3), "I")), cleaf((Stream(2, 4, 5, 6), "C"))))
   }
@@ -218,10 +222,16 @@ object HTTreeSpec extends Specification {
   }
 
   "nextPool should work" in {
+
+    result.nextPool must_== Stream(10, 11)
     s0.nextPool.toList must_== List(1, 2, 3, 4, 5, 6)
     s1.nextPool.toList must_== List(2, 3, 4, 5, 6)
     s2.nextPool.toList must_== List(3, 4, 5, 6)
     s3.nextPool.toList must_== List(4, 5, 6)
+
+    val s11 = result.update(Answer(10, true))
+    val s12 = s11.update(Answer(11, true))
+    s12.nextPool must_== Stream(8)
   }
 
   "next should work" in {
@@ -252,21 +262,22 @@ object HTTreeSpec extends Specification {
     s6_2.depth must_== 2
 
   }
-  "countInCorrect should work" in {
-    countInCorrect("ICCI") must_== Some(2)
-    countCorrect("ICCI") must_== Some(2)
-    countInCorrect("ICCCCCCCCI") must_== Some(2)
-    countCorrect("ICCCCCCCCI") must_== Some(8)
-    countInCorrect("II") must_== Some(2)
-    countCorrect("II") must_== None
-    countInCorrect("I") must_== Some(1)
-    countInCorrect("CC") must_== None
+  "countInCorrect and countCorrect should work" in {
+    countInCorrect("ICCI") must_== 2
+    countCorrect("ICCI") must_== 2
+    countInCorrect("ICCCCCCCCI") must_== 2
+    countCorrect("ICCCCCCCCI") must_== 8
+    countInCorrect("II") must_== 2
+    countCorrect("II") must_== 0
+    countInCorrect("I") must_== 1
+    countInCorrect("CC") must_== 0
 
   }
 
   "countSequence should work" in {
     //    def countCorrectSequence(z: String)(acc: Int)(out: Int)(s: List[Char])
     countLongestCorrect("ICCCCCCCCI") must_== 8
+    countLongestCorrect("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIII") must_== 0
     countLongestCorrect("ICCCCICCCCI") must_== 4
     countLongestCorrect("ICCCCCICCCI") must_== 5
     countLongestCorrect("ICCCICCCCCI") must_== 5
