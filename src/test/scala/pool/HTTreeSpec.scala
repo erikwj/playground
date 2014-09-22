@@ -180,13 +180,9 @@ object HTTreeSpec extends Specification {
         (Stream(10, 11), "IC"),
         (Stream(5), "ICI"),
         (Stream(6), "ICC"))
-        
-
   }
 
   "cobind should work" in {
-    val c: HTTree[String] = s6.cobind(_.show)
-
     s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
     s6.cobind(path(_)) must_== inode((Stream.Empty, "I"), Stream.Empty, Stream(ileaf((Stream(1, 3), "I")), cleaf((Stream(2, 4, 5, 6), "C"))))
   }
@@ -275,7 +271,6 @@ object HTTreeSpec extends Specification {
   }
 
   "countSequence should work" in {
-    //    def countCorrectSequence(z: String)(acc: Int)(out: Int)(s: List[Char])
     countLongestCorrect("ICCCCCCCCI") must_== 8
     countLongestCorrect("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIII") must_== 0
     countLongestCorrect("ICCCCICCCCI") must_== 4
@@ -284,16 +279,6 @@ object HTTreeSpec extends Specification {
     countLongestInCorrect("ICCCICCCCCI") must_== 1
     countLongestInCorrect("IIICCCICCCCCI") must_== 3
   }
-
-  //
-  //  "leafs should work" in {
-  ////    s0.paths.toList must_== List((Stream(1, 2, 3, 4, 5, 6), "<I>"))
-  ////    s1.paths.toList must_== List((Stream(2, 3, 4, 5, 6), "<I>"), (Stream(1), "<I>-<I>"))
-  ////    s1a.paths.toList must_== List((Stream(2, 3, 4, 5, 6), "<I>"), (Stream(1), "<I>-<C>"))
-  ////    s2.paths.toList must_== List((Stream(3, 4, 5, 6), "<I>"), (Stream(1), "<I>-<I>"), (Stream(2), "<I>-<C>"))
-  //     		s7.leafs.toList must_==  List((Stream(1),"<I>"), (Stream(3),"<C>"), (Stream(2, 4, 5, 6),"<C>"))
-  //    //    s1a.paths.toList must_== "bla"
-  //  }
 
 }
 
