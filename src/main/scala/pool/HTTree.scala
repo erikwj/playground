@@ -160,7 +160,7 @@ sealed abstract class HTTree[+A] {
   }
 
 
-  def paths = this.foldMap("")(path(_))((x: String, y: String) => x + y)
+  def paths = (this.foldMap("")(path(_))((x: String, y: String) => x + y)).flatten.filter(p => !(p._1).isEmpty)
   
   /**
    *
@@ -179,7 +179,8 @@ sealed abstract class HTTree[+A] {
    *
    */
 
-  def cobind[B](f: HTTree[A] => B): HTTree[B] =
+  def cobind[B](f: HTTree[A] => B): HTTree[B] = 
+//    bind2(this,f(this),Stream.Empty,result map {_ cobind f})
 		  this match {
 		  case i: ITrunk[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
 		  case i: InCorrect[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
@@ -189,11 +190,19 @@ sealed abstract class HTTree[+A] {
 
   def bind[B](h: B, t: Stream[B], r: Stream[HTTree[B]]): HTTree[B] =
     this match {
-      case i: ITrunk[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
-      case i: InCorrect[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
-      case c: CTrunk[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
-      case c: Correct[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
+      case i: ITrunk[A] => inode(h, t, r map { p => bind(p.rootValue,p.rootValues.tail, p.result) })
+      case i: InCorrect[A] => inode(h, t, r map { p => bind(p.rootValue,p.rootValues.tail, p.result) })
+      case c: CTrunk[A] => cnode(h, t, r map { p => bind(p.rootValue,p.rootValues.tail, p.result) })
+      case c: Correct[A] => cnode(h, t, r map { p => bind(p.rootValue,p.rootValues.tail, p.result) })
     }
+  
+//  def bind2(p: HTTree[A]): HTTree[A] =
+//		  p match {
+//		  case i: ITrunk[A] => inode(p.rootValues.head, p.rootValues.tail, p.result map { x => bind2(x) })
+//		  case i: InCorrect[A] => inode(p.rootValues.head, p.rootValues.tail, p.result map { x => bind2(x) })
+//		  case c: CTrunk[A] => cnode(p.rootValues.head, p.rootValues.tail, p.result map { x => bind2(x) })
+//		  case c: Correct[A] => cnode(p.rootValues.head, p.rootValues.tail, p.result map { x => bind2(x) })
+//  }
 
   def show = this match {
     case x: InCorrect[A] => "I"
