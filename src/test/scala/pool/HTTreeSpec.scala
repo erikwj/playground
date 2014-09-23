@@ -9,6 +9,7 @@ import pool.HTTree.Answer
 object HTTreeSpec extends Specification {
 
   import HTTree._
+  import pool.Question._
 
   //First round of answers
   val a1 = Answer(1, false)
@@ -171,10 +172,10 @@ object HTTreeSpec extends Specification {
   }
 
   "paths should work" in {
-    s0.paths must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
-    s1.paths must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
+    s0.paths must_== Stream((Stream(1, 2, 3, 4, 5, 6), "I"))
+    s1.paths must_== Stream((Stream(2, 3, 4, 5, 6), "I"), (Stream(1), "II"))
 
-    result.paths.flatten.filter(p => !(p._1).isEmpty) must_==
+    result.paths must_==
       Stream(
         (Stream(8), "III"),
         (Stream(1), "IIII"),
@@ -189,7 +190,6 @@ object HTTreeSpec extends Specification {
     s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
     s6.cobind(path(_)) must_== inode((Stream.Empty, "I"), Stream.Empty, Stream(ileaf((Stream(1, 3), "I")), cleaf((Stream(2, 4, 5, 6), "C"))))
   }
-  
 
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
@@ -282,6 +282,36 @@ object HTTreeSpec extends Specification {
     countLongestCorrect("ICCCICCCCCI") must_== 5
     countLongestInCorrect("ICCCICCCCCI") must_== 1
     countLongestInCorrect("IIICCCICCCCCI") must_== 3
+  }
+
+  "DICTTree should work" in {
+
+        val q1 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
+        val q2 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
+        val q3 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
+        val q4 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
+        val q5 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
+        val q6 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
+        val q7 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
+    
+        val s0 = ileafs(q1, Stream(q2, q3, q4, q5, q6, q7))
+        s0.next must_== q1
+        s0.nextPool must_== Stream(q1, q2, q3, q4, q5, q6, q7)
+        
+        val s1 = s0.update(Answer(q1, q1.isCorrect("Amsterdam")))
+        s1 must_== inode(q2, Stream(q3, q4, q5, q6, q7), Stream(cleaf(q1)))
+        
+        val s2i = s1.update(Answer(q2, q2.isCorrect("Brusels")))
+        s2i must_== inode(q3, Stream(q4, q5, q6, q7), Stream(ileaf(q2), cleaf(q1)))
+        
+        val s2c = s1.update(Answer(q2, q2.isCorrect("Brussel")))
+        s2c must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
+        
+        val s2cs = s1.update(Answer(q2, q2.isCorrect("brussel",false)))
+        s2c must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
+    
+        s2i.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q2), "II")), ((Stream(q1), "IC")))
+        s2c.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q1, q2), "IC")))
   }
 
 }
