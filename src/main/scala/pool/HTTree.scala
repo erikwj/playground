@@ -156,7 +156,7 @@ sealed abstract class HTTree[+A] {
 
       val r = f(this)
       lazy val sit = g(s, r._2)
-      bind((r._1, sit), result map { (_.foldMap(sit)(f)(g)) })
+      bind((r._1, sit),Stream.Empty, result map { (_.foldMap(sit)(f)(g)) })
   }
 
 
@@ -180,20 +180,19 @@ sealed abstract class HTTree[+A] {
    */
 
   def cobind[B](f: HTTree[A] => B): HTTree[B] =
-//    bind(f(this),result map { _ cobind f })
-    this match {
-      case i: ITrunk[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
-      case i: InCorrect[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
-      case c: CTrunk[A] => cnode(f(c), Stream.Empty, result map { _ cobind f })
-      case c: Correct[A] => cnode(f(c), Stream.Empty, result map { _ cobind f })
-    }
+		  this match {
+		  case i: ITrunk[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
+		  case i: InCorrect[A] => inode(f(i), Stream.Empty, result map { _ cobind f })
+		  case c: CTrunk[A] => cnode(f(c), Stream.Empty, result map { _ cobind f })
+		  case c: Correct[A] => cnode(f(c), Stream.Empty, result map { _ cobind f })
+  }
 
-  def bind[B](h: B, r: Stream[HTTree[B]]): HTTree[B] =
+  def bind[B](h: B, t: Stream[B], r: Stream[HTTree[B]]): HTTree[B] =
     this match {
-      case i: ITrunk[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue, p.result) })
-      case i: InCorrect[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue, p.result) })
-      case c: CTrunk[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue, p.result) })
-      case c: Correct[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue, p.result) })
+      case i: ITrunk[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
+      case i: InCorrect[A] => inode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
+      case c: CTrunk[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
+      case c: Correct[A] => cnode(h, Stream.Empty, r map { p => bind(p.rootValue,t, p.result) })
     }
 
   def show = this match {

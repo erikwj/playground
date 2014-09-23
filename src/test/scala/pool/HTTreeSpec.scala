@@ -43,6 +43,26 @@ object HTTreeSpec extends Specification {
   val s6_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), ctrunk(Stream(inode(4, Stream(6), Stream.Empty), cnode(2, Stream(5), Stream.Empty)))))
 
   /**
+   *                        left
+   *                        /  \
+   *                       /    \
+   *                      /\    /\
+   *                     / 2,4 5  6
+   *                    /\
+   *                   1  3
+   */
+  val left = itrunk(Stream(itrunk(Stream(itrunk(Stream(ileaf(1), cleaf(3))), cleafs(2, Stream(4)))), ctrunk(Stream(ileaf(5), cleaf(6)))))
+
+  /**
+   *                        right
+   *                        /  \
+   *                       /    \
+   *                      /\    10,11
+   *                     8  9
+   */
+  val right = itrunk(Stream(itrunk(Stream(ileaf(8), cleaf(9))), cleafs(10, Stream(11))))
+
+  /**
    *                        result
    *                        /     \
    *                       /      10,11
@@ -50,6 +70,9 @@ object HTTreeSpec extends Specification {
    *                     8 2,4,9  5  6
    *                    /\
    *                   1  3
+   *
+   *  This is the result of a merge from left and right
+   *
    */
   val result = itrunk(Stream(
     itrunk(Stream(
@@ -110,26 +133,6 @@ object HTTreeSpec extends Specification {
     val s2string = ileaf("4")
     val s3 = cleaf(14)
 
-    /**
-     *                        left
-     *                        /  \
-     *                       /    \
-     *                      /\    /\
-     *                     / 2,4 5  6
-     *                    /\
-     *                   1  3
-     */
-    val left = itrunk(Stream(itrunk(Stream(itrunk(Stream(ileaf(1), cleaf(3))), cleafs(2, Stream(4)))), ctrunk(Stream(ileaf(5), cleaf(6)))))
-
-    /**
-     *                        right
-     *                        /  \
-     *                       /    \
-     *                      /\    10,11
-     *                     8  9
-     */
-    val right = itrunk(Stream(itrunk(Stream(ileaf(8), cleaf(9))), cleafs(10, Stream(11))))
-
     //
     val m = merge(s1, s2)
 
@@ -167,7 +170,7 @@ object HTTreeSpec extends Specification {
     s6_2 map add1 must_== itrunk(Stream(itrunk(Stream(ileaf(4), cleaf(2))), ctrunk(Stream(inode(5, Stream(7), Stream.Empty), cnode(3, Stream(6), Stream.Empty)))))
   }
 
-  "nodeMap should work" in {
+  "paths should work" in {
     s0.paths must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
     s1.paths must_== inode((Stream(2, 3, 4, 5, 6), "I"), Stream.Empty, Stream(ileaf((Stream(1), "II"))))
 
@@ -186,6 +189,7 @@ object HTTreeSpec extends Specification {
     s0.cobind(path(_)) must_== inode((Stream(1, 2, 3, 4, 5, 6), "I"), Stream.Empty, Stream.Empty)
     s6.cobind(path(_)) must_== inode((Stream.Empty, "I"), Stream.Empty, Stream(ileaf((Stream(1, 3), "I")), cleaf((Stream(2, 4, 5, 6), "C"))))
   }
+  
 
   "flattten should work" in {
     s0.flatten must_== Stream(1, 2, 3, 4, 5, 6)
