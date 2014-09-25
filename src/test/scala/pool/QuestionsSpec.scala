@@ -2,12 +2,14 @@ package pool
 
 import org.specs2.mutable.Specification
 import pool.HTTree.Answer
+import scalaz._
+import Scalaz._
 
 object QuestionsSpec extends Specification {
   import pool.Question._
   import pool.HTTree._
 
-  val mc1 = MCNUQ(ItemBody("WWII started in 1914"), Map(("Yes", true), ("No", false)),1)
+  val mc1 = MCUQ(ItemBody("WWII started in 1914"), Map(("Yes", true), ("No", false)), 1)
   val mc1_i = mc1.item
 
   val q1 = DICTQ("Nederland", "Amsterdam")
@@ -18,11 +20,11 @@ object QuestionsSpec extends Specification {
   val q6 = DICTQ("Spanje", "Madrid")
   val q7 = DICTQ("Portugal", "Lissabon")
 
-  "TrueFalseQuestion => MultipleChoice1answerQuestion can be answered" in {
-    mc1_i.isCorrect(List("Yes")) must_== true
-    mc1_i.isCorrect(List("No")) must_== false
-    mc1_i.isCorrect(List("Yes", "No")) must_== false
-    mc1_i.isCorrect(List("No", "Yes")) must_== false
+  "TrueFalseQuestion => MultipleChoiceQuestion can be answered" in {
+    mc1_i.isCorrect(List("Yes")) must_== Success("Yes")
+    mc1_i.isCorrect(List("No")) must_== Failure("wrongAnswer")
+    mc1_i.isCorrect(List("Yes", "No")) must_== Failure("wrongAnswer")
+    mc1_i.isCorrect(List("No", "Yes")) must_== Failure("wrongAnswer")
   }
 
   "DICTI can be answered" in {
@@ -68,8 +70,8 @@ object QuestionsSpec extends Specification {
 
   "MCNQ should work" in {
     //ordered => the first answers are evaluated until the minimum #answers is reached
-    val mcno = MCOI(ItemBody("What is the alphabet like"), List(("a", true), ("b", true), ("c", true), ("d", true)), 3)
-    val mcno4 = MCOI(ItemBody("What is the alphabet like"), List(("a", true), ("b", true), ("c", true), ("d", true)), 4)
+    val mcno = MCOI(ItemBody("What is the alphabet like"), List("a", "b","c","d"), 3)
+    val mcno4 = MCOI(ItemBody("What is the alphabet like"), List("a", "b","c","d"), 4)
     mcno.isCorrect(List("a", "b", "c", "k")) must_== true
     mcno4.isCorrect(List("a", "b", "c", "k")) must_== false
     mcno.isCorrect(List("e", "a", "b", "c", "d")) must_== false
@@ -78,20 +80,28 @@ object QuestionsSpec extends Specification {
     mcno.isCorrect(List("a", "b", "c", "d")) must_== true
 
     //unordered => all answers are evaluated
-    val mcnu = MCUI(ItemBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 3)
+    val mcnu = MCUI(ItemBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true),("5",false), ("d", true)), 3)
     val mcnu4 = MCUI(ItemBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 4)
-    mcnu.isCorrect(List("a", "b", "c", "k")) must_== false
-    mcnu.isCorrect(List("a", "b", "c", "d")) must_== true
-    mcnu.isCorrect(List("b", "c", "a", "d")) must_== true
-    mcnu.isCorrect(List("b", "c", "a")) must_== true
-    mcnu.isCorrect(List("b", "c")) must_== false
+    mcnu.isCorrect(List("a", "b", "c", "k")) must_== Failure("answerNotAvailable")
+    mcnu.isCorrect(List("a", "b", "c", "d")) must_== Success("abcd")
+    mcnu.isCorrect(List("b", "c", "a", "d")) must_== Success("bcad")
+    mcnu.isCorrect(List("b", "c", "a")) must_== Success("bca")
+    mcnu.isCorrect(List("b", "c")) must_== Failure("tooFewAnswers")
 
-    mcnu4.isCorrect(List("a", "b", "c", "k")) must_== false
-    mcnu4.isCorrect(List("b", "c", "a")) must_== false
-    mcnu4.isCorrect(List("a", "b", "c", "d")) must_== true
-    mcnu4.isCorrect(List("b", "c", "a", "d")) must_== true
-    mcnu4.isCorrect(List("b", "c", "a", "d", "e")) must_== false
-    mcnu4.isCorrect(List("b", "c", "e", "d", "a")) must_== false
+    mcnu4.isCorrect(List("a", "b", "c", "k")) must_== Failure("answerNotAvailable")
+    mcnu4.isCorrect(List("b", "c", "a")) must_== Failure("tooFewAnswers")
+    mcnu4.isCorrect(List("a", "b", "c", "d")) must_== Success("abcd")
+    mcnu4.isCorrect(List("b", "c", "a", "d")) must_== Success("bcad")
+    mcnu4.isCorrect(List("b", "c", "a", "d", "e")) must_== Failure("answerNotAvailable")
+    mcnu4.isCorrect(List("b", "c", "e", "d", "a")) must_== Failure("answerNotAvailable")
 
+    val cijferR = MCUI(ItemBody("Welk cijfer vult deze reeks aan", Some(List("1", "4", "9", "16"))), Map(("20", false), ("25", true), ("30", false), ("9", false)), 1)
+    cijferR.isCorrect(List("")) must_== Failure("answerNotAvailable")
+    cijferR.isCorrect(List("20")) must_== Failure("wrongAnswer")
+    cijferR.isCorrect(List("30")) must_== Failure("wrongAnswer")
+    cijferR.isCorrect(List("9")) must_== Failure("wrongAnswer")
+    cijferR.isCorrect(List("12")) must_== Failure("answerNotAvailable")
+    cijferR.isCorrect(List("25")) must_== Success("25")
+    
   }
 }
