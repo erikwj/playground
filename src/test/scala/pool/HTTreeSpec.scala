@@ -4,29 +4,31 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 import std.stream.{ streamInstance, streamMonoid }
-import pool.HTTree.Answer
+import pool.HTTree.AnswerResult
 
 object HTTreeSpec extends Specification {
 
   import HTTree._
   import pool.Question._
+  import pool.Answers._
+  
 
   //First round of answers
-  val a1 = Answer(1, false)
-  val a2 = Answer(2, true)
-  val a3 = Answer(3, false)
-  val a4 = Answer(4, true)
-  val a5 = Answer(5, true)
-  val a6 = Answer(6, true)
+  val a1 = AnswerResult(1, Failure("1"))
+  val a2 = AnswerResult(2, Success(2))
+  val a3 = AnswerResult(3, Failure("3"))
+  val a4 = AnswerResult(4, Success(4))
+  val a5 = AnswerResult(5, Success(5))
+  val a6 = AnswerResult(6, Success(6))
   //Second round of answers
-  val a1_2 = Answer(1, true)
-  val a2_2 = Answer(2, true)
-  val a3_2 = Answer(3, false)
-  val a4_2 = Answer(4, false)
-  val a5_2 = Answer(5, true)
-  val a6_2 = Answer(6, false)
+  val a1_2 = AnswerResult(1, Success(1))
+  val a2_2 = AnswerResult(2, Success(2))
+  val a3_2 = AnswerResult(3, Failure("3"))
+  val a4_2 = AnswerResult(4, Failure("4"))
+  val a5_2 = AnswerResult(5, Success(5))
+  val a6_2 = AnswerResult(6, Failure("6"))
 
-  //State transitions State0 + Answer1 => State1
+  //State transitions State0 + AnswerResult1 => State1
   val s0 = inode(1, Stream(2, 3, 4, 5, 6), Stream.Empty)
   val s1 = inode(2, Stream(3, 4, 5, 6), Stream(ileaf(1)))
   val s2 = inode(3, Stream(4, 5, 6), Stream(ileaf(1), cleaf(2)))
@@ -35,7 +37,7 @@ object HTTreeSpec extends Specification {
   val s5 = inode(6, Stream.Empty, Stream(inode(1, Stream(3), Stream.Empty), cnode(2, Stream(4, 5), Stream.Empty)))
   val s6 = itrunk(Stream(inode(1, Stream(3), Stream.Empty), cnode(2, Stream(4, 5, 6), Stream.Empty)))
 
-  //State transitions State6 + Answer1_2 => State1_2
+  //State transitions State6 + AnswerResult1_2 => State1_2
   val s1_2 = itrunk(Stream(inode(3, Stream.Empty, Stream(cleaf(1))), cnode(2, Stream(4, 5, 6), Stream.Empty)))
   val s2_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(2, Stream(4, 5, 6), Stream.Empty)))
   val s3_2 = itrunk(Stream(itrunk(Stream(ileaf(3), cleaf(1))), cnode(4, Stream(5, 6), Stream(cleaf(2)))))
@@ -229,8 +231,8 @@ object HTTreeSpec extends Specification {
     s2.nextPool.toList must_== List(3, 4, 5, 6)
     s3.nextPool.toList must_== List(4, 5, 6)
 
-    val s11 = result.update(Answer(10, true))
-    val s12 = s11.update(Answer(11, true))
+    val s11 = result.update(AnswerResult(10, Success(10)))
+    val s12 = s11.update(AnswerResult(11, Success(11)))
     s12.nextPool must_== Stream(8)
   }
 
@@ -285,33 +287,36 @@ object HTTreeSpec extends Specification {
   }
 
   "DICTTree should work" in {
+    val q1 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
+    val q2 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
+    val q3 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
+    val q4 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
+    val q5 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
+    val q6 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
+    val q7 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
 
-        val q1 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
-        val q2 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
-        val q3 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
-        val q4 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
-        val q5 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
-        val q6 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
-        val q7 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
-    
-        val s0 = ileafs(q1, Stream(q2, q3, q4, q5, q6, q7))
-        s0.next must_== q1
-        s0.nextPool must_== Stream(q1, q2, q3, q4, q5, q6, q7)
-        
-        val s1 = s0.update(Answer(q1, q1.isCorrect("Amsterdam")))
-        s1 must_== inode(q2, Stream(q3, q4, q5, q6, q7), Stream(cleaf(q1)))
-        
-        val s2i = s1.update(Answer(q2, q2.isCorrect("Brusels")))
-        s2i must_== inode(q3, Stream(q4, q5, q6, q7), Stream(ileaf(q2), cleaf(q1)))
-        
-        val s2c = s1.update(Answer(q2, q2.isCorrect("Brussel")))
-        s2c must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
-        
-        val s2cs = s1.update(Answer(q2, q2.isCorrect("brussel",false)))
-        s2c must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
-    
-        s2i.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q2), "II")), ((Stream(q1), "IC")))
-        s2c.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q1, q2), "IC")))
+    val s0 = ileafs(q1, Stream(q2, q3, q4, q5, q6, q7))
+    s0.next must_== q1
+    s0.nextPool must_== Stream(q1, q2, q3, q4, q5, q6, q7)
+
+    val s1 = s0.update(AnswerResult(q1, q1.isCorrect(SingleAnswer("Amsterdam"))))
+    s1.next must_== q2
+    s1 must_== inode(q2, Stream(q3, q4, q5, q6, q7), Stream(cleaf(q1)))
+
+    val s2i = s1.update(AnswerResult(q2, q2.isCorrect(SingleAnswer("Brusels"))))
+    s2i.next must_== q3
+    s2i must_== inode(q3, Stream(q4, q5, q6, q7), Stream(ileaf(q2), cleaf(q1)))
+
+    val s2c = s1.update(AnswerResult(q2, q2.isCorrect(SingleAnswer("Brussel"))))
+    s2c.next must_== q3
+    s2c must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
+
+//    val s2cs = s1.update(AnswerResult(q2, q2.isCorrect(SingleAnswer("brussel"))))
+//    s2cs.next must_== q3
+//    s2cs must_== inode(q3, Stream(q4, q5, q6, q7), Stream(cleafs(q1, Stream(q2))))
+
+    s2i.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q2), "II")), ((Stream(q1), "IC")))
+    s2c.paths must_== Stream((Stream(q3, q4, q5, q6, q7), "I"), ((Stream(q1, q2), "IC")))
   }
 
 }

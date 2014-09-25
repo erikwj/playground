@@ -28,7 +28,7 @@ sealed abstract class HTTree[+A] {
   /**
    * Update: updates a HTTree with an answers and returns a new HTTree
    */
-  def update[B >: A](a: Answer[B]) = emap(dropA(a.q))(updateR(a))
+  def update[B >: A](a: AnswerResult[B]) = emap(dropA(a.q))(updateR(a))
 
   def fold[B](f: A => B)(g: (B, B) => B): B = result match {
     case Stream.Empty => f(rootValue)
@@ -215,15 +215,15 @@ sealed abstract class HTTree[+A] {
 //Can be a leaf with empty result or a branch with some result
 case class InCorrect[A](hd: A, tl: Stream[A], result: Stream[HTTree[A]]) extends HTTree[A]
 case class Correct[A](hd: A, tl: Stream[A], result: Stream[HTTree[A]]) extends HTTree[A]
+
 //Trunks have no leafs and thus no values
 case class ITrunk[A](result: Stream[HTTree[A]]) extends HTTree[A]
 case class CTrunk[A](result: Stream[HTTree[A]]) extends HTTree[A]
 
 object HTTree {
 
-  case class Answer[A](q: A, r: Boolean)
+  case class AnswerResult[+A](q: A, r: Validation[String,A])
 
-  //
   /** Construct a new Trunk with no values. */
   def itrunk[A](result: => Stream[HTTree[A]]): HTTree[A] = ITrunk(result)
   def ctrunk[A](result: => Stream[HTTree[A]]): HTTree[A] = CTrunk(result)
@@ -394,7 +394,7 @@ object HTTree {
   def countLongestCorrect(s: String): Int = countLongestSequence('C')(0)(0)(s.toList)
   def countLongestInCorrect(s: String): Int = countLongestSequence('I')(0)(0)(s.toList)
 
-  def updateResult[A, B >: A](b1: Boolean)(a: B)(r: Stream[HTTree[B]]): Stream[HTTree[B]] = {
+  def updateResult[A, B >: A](v: Validation[String,B])(a: B)(r: Stream[HTTree[B]]): Stream[HTTree[B]] = {
     def appendInCorrect[B >: A](p: HTTree[B], a: B): HTTree[B] =
       p match {
         case i: InCorrect[A] => InCorrect(i.hd, i.tl #::: Stream(a), i.result)
@@ -408,17 +408,17 @@ object HTTree {
       }
 
     r match {
-      case Stream(ii, cc) => if (!b1) Stream(appendInCorrect(ii, a), cc) else Stream(ii, appendCorrect(cc, a))
+      case Stream(ii, cc) => if (v.isFailure) Stream(appendInCorrect(ii, a), cc) else Stream(ii, appendCorrect(cc, a))
       case Stream(p) => p match {
-        case i: InCorrect[A] => if (!b1) Stream(appendInCorrect(i, a)) else Stream(i, appendCorrect(p, a))
-        case c: Correct[A] => if (b1) Stream(appendCorrect(c, a)) else Stream(appendInCorrect(p, a), c)
-        case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
+        case i: InCorrect[A] => if (v.isFailure) Stream(appendInCorrect(i, a)) else Stream(i, appendCorrect(p, a))
+        case c: Correct[A] => if (v.isSuccess) Stream(appendCorrect(c, a)) else Stream(appendInCorrect(p, a), c)
+        case _ => if (v.isSuccess) Stream(cleaf(a)) else Stream(ileaf(a))
       }
-      case _ => if (b1) Stream(cleaf(a)) else Stream(ileaf(a))
+      case _ => if (v.isSuccess) Stream(cleaf(a)) else Stream(ileaf(a))
     }
   }
 
-  def updateR[A, B >: A](a: Answer[B]) = updateResult[A, B](a.r)(a.q) _
+  def updateR[A, B >: A](a: AnswerResult[B]) = updateResult[A, B](a.r)(a.q) _
 
   def drop[A, B >: A](a: B)(f: A => Boolean)(s: Stream[A]): Either[Stream[B], Stream[B]] = s match {
     case h #:: t if f(h) => Right(t)
