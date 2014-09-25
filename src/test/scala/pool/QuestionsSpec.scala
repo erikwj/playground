@@ -7,15 +7,8 @@ object QuestionsSpec extends Specification {
   import pool.Question._
   import pool.HTTree._
 
-  val tfq = TFQ(ItemBody("WWII started in 1914"), false)
-  val a1 = Answer(tfq.body.label, true)
-  val a2 = Answer(tfq.body.label, false)
-  val a3 = Answer("WWII started in 1944", true)
-  val a4 = Answer("WWII started in 1944", false)
-  val a5 = Answer("  WWII started in 1914 ", false)
-
-  //TODO tab deletion needs attention
-  val a6 = Answer("WWII  		 started in 1914 ", false)
+  val mc1 = MCNUQ(ItemBody("WWII started in 1914"), Map(("Yes", true), ("No", false)),1)
+  val mc1_i = mc1.item
 
   val q1 = DICTQ("Nederland", "Amsterdam")
   val q2 = DICTQ("Belgie", "Brussel")
@@ -25,13 +18,11 @@ object QuestionsSpec extends Specification {
   val q6 = DICTQ("Spanje", "Madrid")
   val q7 = DICTQ("Portugal", "Lissabon")
 
-  "TFQ can be answered" in {
-    tfq.isCorrect(a1) must_== false
-    tfq.isCorrect(a2) must_== true
-    tfq.isCorrect(a3) must_== false
-    tfq.isCorrect(a4) must_== false
-    tfq.isCorrect(a5) must_== true
-    tfq.isCorrect(a6) must_== true
+  "TrueFalseQuestion => MultipleChoice1answerQuestion can be answered" in {
+    mc1_i.isCorrect(List("Yes")) must_== true
+    mc1_i.isCorrect(List("No")) must_== false
+    mc1_i.isCorrect(List("Yes", "No")) must_== false
+    mc1_i.isCorrect(List("No", "Yes")) must_== false
   }
 
   "DICTI can be answered" in {
@@ -73,5 +64,34 @@ object QuestionsSpec extends Specification {
       DICTI(ItemBody("Van welk land is dit de hoofdstad", Some(List("Parijs"))), "Frankrijk"),
       DICTI(ItemBody("Van welk land is dit de hoofdstad", Some(List("Madrid"))), "Spanje"),
       DICTI(ItemBody("Van welk land is dit de hoofdstad", Some(List("Lissabon"))), "Portugal"))
+  }
+
+  "MCNQ should work" in {
+    //ordered => the first answers are evaluated until the minimum #answers is reached
+    val mcno = MCOI(ItemBody("What is the alphabet like"), List(("a", true), ("b", true), ("c", true), ("d", true)), 3)
+    val mcno4 = MCOI(ItemBody("What is the alphabet like"), List(("a", true), ("b", true), ("c", true), ("d", true)), 4)
+    mcno.isCorrect(List("a", "b", "c", "k")) must_== true
+    mcno4.isCorrect(List("a", "b", "c", "k")) must_== false
+    mcno.isCorrect(List("e", "a", "b", "c", "d")) must_== false
+    mcno.isCorrect(List("a", "b", "c")) must_== true
+    mcno4.isCorrect(List("a", "b", "c")) must_== false
+    mcno.isCorrect(List("a", "b", "c", "d")) must_== true
+
+    //unordered => all answers are evaluated
+    val mcnu = MCUI(ItemBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 3)
+    val mcnu4 = MCUI(ItemBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 4)
+    mcnu.isCorrect(List("a", "b", "c", "k")) must_== false
+    mcnu.isCorrect(List("a", "b", "c", "d")) must_== true
+    mcnu.isCorrect(List("b", "c", "a", "d")) must_== true
+    mcnu.isCorrect(List("b", "c", "a")) must_== true
+    mcnu.isCorrect(List("b", "c")) must_== false
+
+    mcnu4.isCorrect(List("a", "b", "c", "k")) must_== false
+    mcnu4.isCorrect(List("b", "c", "a")) must_== false
+    mcnu4.isCorrect(List("a", "b", "c", "d")) must_== true
+    mcnu4.isCorrect(List("b", "c", "a", "d")) must_== true
+    mcnu4.isCorrect(List("b", "c", "a", "d", "e")) must_== false
+    mcnu4.isCorrect(List("b", "c", "e", "d", "a")) must_== false
+
   }
 }
