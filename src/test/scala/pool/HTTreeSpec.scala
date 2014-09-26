@@ -11,6 +11,7 @@ object HTTreeSpec extends Specification {
   import HTTree._
   import pool.Question._
   import pool.Answers._
+  import pool.Item._
   
 
   //First round of answers
@@ -286,14 +287,14 @@ object HTTreeSpec extends Specification {
   }
 
   "Mixed Item tree should work" in {
-    val q1 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
-    val q2 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
-    val q3 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
-    val q4 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
-    val q5 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
-    val q6 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
-    val q7 = DICTI(ItemBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
-    val cijferR = MCUI(ItemBody("Welk cijfer vult deze reeks aan", Some(List("1", "4", "9", "16"))), Map(("20", false), ("25", true), ("30", false), ("9", false)), 1)
+    val q1 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
+    val q2 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
+    val q3 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
+    val q4 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
+    val q5 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
+    val q6 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
+    val q7 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
+    val cijferR = MCUI(QuestionBody("Welk cijfer vult deze reeks aan", Some(List("1", "4", "9", "16"))), Map(("20", false), ("25", true), ("30", false), ("9", false)), 1)
    
     val s0:HTTree[Item] = ileafs(q1, Stream(q2, q3, q4, q5, q6, q7,cijferR))
     s0.next must_== q1
