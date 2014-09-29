@@ -1,4 +1,4 @@
-package pool
+package com.faqtfinding.pool
 
 import scalaz._
 import Scalaz._

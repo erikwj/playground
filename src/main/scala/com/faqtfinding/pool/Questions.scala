@@ -203,6 +203,7 @@ object Item {
 
   import Question.QuestionBody
   import ErrorHandling._
+  import com.faqtfinding.pool.HTTree.AnswerResult
 
   def clean(s: String): String = s.replaceAll("\\s+", " ").trim
 

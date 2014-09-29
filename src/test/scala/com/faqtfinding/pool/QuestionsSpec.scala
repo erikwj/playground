@@ -1,15 +1,18 @@
 package pool
 
 import org.specs2.mutable.Specification
-import pool.HTTree.AnswerResult
+import com.faqtfinding.pool.HTTree.AnswerResult
+import com.faqtfinding.pool.Item._
+import com.faqtfinding.pool.Question._
+import com.faqtfinding.pool.Answers._
 import scalaz._
 import Scalaz._
 
 object QuestionsSpec extends Specification {
-  import pool.Question._
-  import pool.Answers._
-  import pool.HTTree._
-  import pool.Item._
+  import com.faqtfinding.pool.Question
+  import com.faqtfinding.pool.Answers._
+  import com.faqtfinding.pool.HTTree._
+  import com.faqtfinding.pool.Item._
 
   val mc1 = MCUQ(QuestionBody("WWII started in 1914"), Map(("Yes", true), ("No", false)), 1)
   val mc1_i = mc1.item
@@ -73,10 +76,10 @@ object QuestionsSpec extends Specification {
     val items = qg.items(false)
     val items2 = qg.items(true)
 
-    items must beAnInstanceOf[Stream[Item]]
+    items must beAnInstanceOf[Stream[com.faqtfinding.pool.Item]]
     items must have size(7)
 
-    items2 must beAnInstanceOf[Stream[Item]]
+    items2 must beAnInstanceOf[Stream[com.faqtfinding.pool.Item]]
     items2 must have size(7)
     // items must_== Stream(
     //   DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam"),
