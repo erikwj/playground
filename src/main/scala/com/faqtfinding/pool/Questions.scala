@@ -20,8 +20,8 @@ object Question {
   //  private val ValidDocRef = """([\w-]{16})""".r
   def uuid = java.util.UUID.randomUUID.toString
 
-  case class QuestionBody(label: String, statements: Option[List[String]] = None) 
-  
+  case class QuestionBody(label: String, statements: Option[List[String]] = None)
+
   object QuestionBody {
     //json reader
 
@@ -35,7 +35,7 @@ object Question {
 
       def statementTag(v: String) = s"""<div class="statement">$v</div>"""
       def statementContainer(st: String) = """<div class="statement-container"><ul class="list-inline"><li>""" + st + """</li></ul></div>"""
-      def label(l:String) = s"""<div class="label">$l</div>"""
+      def label(l: String) = s"""<div class="label">$l</div>"""
 
       qb match {
         case Some(q) =>
@@ -54,7 +54,7 @@ object Question {
   case class DICTQ(body: String, answer: String) extends Question {
     def item(instruction: String): Item = DICTI(uuid, QuestionBody(instruction, Some(List(body))), answer)
     def reverseItem(reverseInstruction: String): Item = DICTI(uuid, QuestionBody(reverseInstruction, Some(List(answer))), body)
-    def asHtml:String = DICTQ.asHtml(Some(body),Some(answer))
+    def asHtml: String = DICTQ.asHtml(Some(body), Some(answer))
   }
 
   object DICTQ {
@@ -65,10 +65,10 @@ object Question {
         (__ \ "answer").read[String])(DICTQ.apply _)
     }
 
-    def bodyAsHtml(body:Option[String]):String = s"""<div class="body"><input type="text" class="form-control" id="question" placeholder="${body.getOrElse("")}"></div>"""
+    def bodyAsHtml(body: Option[String]): String = s"""<div class="body"><input type="text" class="form-control" id="question" placeholder="${body.getOrElse("")}"></div>"""
     def answerAsHtml(answer: Option[String]) = s"""<div class="answer"><input type="text" class="form-control" id="answer" placeholder="${answer.getOrElse("")}"></div>"""
-    def asHtml(body:Option[String],answer: Option[String]):String = bodyAsHtml(body) + answerAsHtml(answer)
-    
+    def asHtml(body: Option[String], answer: Option[String]): String = bodyAsHtml(body) + answerAsHtml(answer)
+    def form: String = asHtml(None, None)
 
   }
 
@@ -84,24 +84,31 @@ object Question {
       }
       else questions map { _.item(instruction) }
 
-    def asHtml:String = DICTQGroup.asHtml(Some(instruction), reverseInstruction,questions)
+    def asHtml: String = DICTQGroup.asHtml(Some(instruction), reverseInstruction, questions)
 
   }
 
   object DICTQGroup {
+
+    implicit val reader: Reads[DICTQGroup] = {
+      (
+        (__ \ "instruction").read[String] and
+        (__ \ "reverseInstruction").readNullable[String] and
+        (__ \ "questions").read[Stream[DICTQ]])(DICTQGroup.apply _)
+    }
+
     def asHtml(instruction: Option[String], reverseInstruction: Option[String], questions: Stream[DICTQ]): String = {
-      def emptyQ = DICTQ.asHtml(None,None)
-      def container(content:String) = 
+      def emptyQ = DICTQ.asHtml(None, None)
+      def container(content: String) =
         s"""<div class="instruction">${instruction.getOrElse("")}</div>""" +
-        s"""<div class="reverseInstruction">${reverseInstruction.getOrElse("")}</div>""" +
-        s"""<div class="item-container">""" + content + s"""</div>"""
+          s"""<div class="reverseInstruction">${reverseInstruction.getOrElse("")}</div>""" +
+          s"""<div class="item-container">""" + content + s"""</div>"""
 
       questions match {
         case Stream.Empty => container(emptyQ)
         case _ => container((questions map { _.asHtml }).mkString(""))
       }
 
-      
     }
   }
 
@@ -112,7 +119,7 @@ object Question {
    */
   case class MCOQ(body: QuestionBody, alternatives: List[String], minimum: Int) extends Question {
     def item: Item = MCOI(uuid, body, alternatives, minimum)
-    def asHtml: String = MCOQ.asHtml(Some(body),Some(alternatives), minimum)
+    def asHtml: String = MCOQ.asHtml(Some(body), Some(alternatives), minimum)
   }
 
   object MCOQ {
@@ -151,7 +158,7 @@ object Question {
    */
   case class MCUQ(body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Question {
     def item: Item = MCUI(uuid, body, alternatives, minimum)
-    def asHtml: String = MCUQ.asHtml(Some(body),Some(alternatives), minimum)
+    def asHtml: String = MCUQ.asHtml(Some(body), Some(alternatives), minimum)
   }
 
   object MCUQ {
@@ -163,16 +170,16 @@ object Question {
     }
     def asHtml(body: Option[QuestionBody], alternatives: Option[Map[String, Boolean]], minimum: Int): String = {
 
-      def alternativeTag(a:Option[String],b:Option[Boolean]) = s"""<div class="alternative">${a.getOrElse("")}</div><div class="correct">${b.getOrElse("")}</div>"""
+      def alternativeTag(a: Option[String], b: Option[Boolean]) = s"""<div class="alternative">${a.getOrElse("")}</div><div class="correct">${b.getOrElse("")}</div>"""
 
       def alternativeGroup = alternatives match {
-        case Some(asg) => 
-        """<div class="alternative-container">""" +
-          (asg map { x => alternativeTag(Some(x._1),Some(x._2)) }).mkString("") +
-          """</div>"""
+        case Some(asg) =>
+          """<div class="alternative-container">""" +
+            (asg map { x => alternativeTag(Some(x._1), Some(x._2)) }).mkString("") +
+            """</div>"""
         case _ => """<div class="alternative-container"><ul><li>""" +
-            alternativeTag(None,None) +
-            """</li></ul></div>"""
+          alternativeTag(None, None) +
+          """</li></ul></div>"""
       }
       QuestionBody.asHtml(body) + alternativeGroup
 
@@ -192,7 +199,7 @@ sealed trait Item {
   def body: QuestionBody
   def label: String = body.label
 
-  def asHtml: String 
+  def asHtml: String
 
   def trialMode: Boolean = false
 
@@ -246,7 +253,7 @@ object Item {
    */
   case class MCOI(id: String, body: QuestionBody, alternatives: List[String], minimum: Int) extends Item {
     import Question.MCOQ
-    
+
     private def answerCompare(answer: String, correct: String) =
       if (clean(answer) == correct) Success(id)
       else wrongAnswer(id, answer)
@@ -263,7 +270,7 @@ object Item {
       if (a.input.length < minimum) tooFewAnswers(id, minimum)
       else { evaluate(a.input, alternatives) }
 
-    def asHtml = MCOQ.asHtml(Some(body),Some(alternatives), minimum)
+    def asHtml = MCOQ.asHtml(Some(body), Some(alternatives), minimum)
   }
 
   object MCOI {
@@ -275,7 +282,7 @@ object Item {
    */
   case class MCUI(id: String, body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Item {
     import Question.MCUQ
-    
+
     private def evaluate(a: String): Validation[String, String] = {
       val ca = clean(a)
       alternatives.get(ca) match {
@@ -288,8 +295,7 @@ object Item {
       if (a.input.length < minimum) tooFewAnswers(id, minimum)
       else (a.input map { evaluate(_) }).reduce(_ +++ _)
 
-    def asHtml: String = MCUQ.asHtml(Some(body),Some(alternatives), minimum)
-  
+    def asHtml: String = MCUQ.asHtml(Some(body), Some(alternatives), minimum)
 
   }
 
