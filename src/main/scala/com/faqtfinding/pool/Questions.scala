@@ -1,13 +1,11 @@
-package pool
-
-import pool.HTTree.AnswerResult
-import pool.Question.DICTQ
+package com.faqtfinding.pool
 
 import play.api.libs.json._
 import play.api.libs.json.Reads
 import play.api.libs.functional.syntax._
 import scalaz._
-import Scalaz._
+import scalaz.Scalaz._
+import scala.Stream
 
 sealed trait Question
 
@@ -22,33 +20,16 @@ object Question {
   //  private val ValidDocRef = """([\w-]{16})""".r
   def uuid = java.util.UUID.randomUUID.toString
 
-  case class QuestionBody(label: String, statements: Option[List[String]] = None) {
-    // def asHtml: String = {
-
-    //   def statementTag(v: String) = s"""<div class="statement">$v</div>"""
-
-    //   val s = statements match {
-    //     case Some(s) =>
-    //       """<div class="statement-container">""" +
-    //         (s map { x => statementTag(x) }).mkString("") +
-    //         """</div"""
-    //     case None => ""
-    //   }
-
-    //   s"""<div class="label">$label</div>""" + s
-
-    // }
-
-  }
-
+  case class QuestionBody(label: String, statements: Option[List[String]] = None) 
+  
   object QuestionBody {
     //json reader
 
-    //    implicit val questionBodyReader: Reads[QuestionBody] = {
-    //      (
-    //        (__ \ "label").read[String] and
-    //        (__ \ "statements").readNullable[List[String]])(QuestionBody.apply _)
-    //    }
+    implicit val questionBodyReader: Reads[QuestionBody] = {
+      (
+        (__ \ "label").read[String] and
+        (__ \ "statements").readNullable[List[String]])(QuestionBody.apply _)
+    }
 
     def asHtml(qb: Option[QuestionBody]): String = {
 
@@ -77,11 +58,12 @@ object Question {
   }
 
   object DICTQ {
-    //    implicit val reader: Reads[DICTQ] = {
-    //      (
-    //        (__ \ "body").read[String] and
-    //        (__ \ "answer").read[String])(DICTQ.apply _)
-    //    }
+
+    implicit val reader: Reads[DICTQ] = {
+      (
+        (__ \ "body").read[String] and
+        (__ \ "answer").read[String])(DICTQ.apply _)
+    }
 
     def bodyAsHtml(body:Option[String]):String = s"""<div class="body"><input type="text" class="form-control" id="question" placeholder="${body.getOrElse("")}"></div>"""
     def answerAsHtml(answer: Option[String]) = s"""<div class="answer"><input type="text" class="form-control" id="answer" placeholder="${answer.getOrElse("")}"></div>"""
@@ -134,13 +116,12 @@ object Question {
   }
 
   object MCOQ {
-    //    implicit val reader: Reads[MCOQ] = {
-    //      (
-    //        (__ \ "body").read[QuestionBody](questionBodyReader) and
-    //        (__ \ "alternatives").read[List[String]] and
-    //        (__ \ "minimum").read[Int]
-    //      )(MCOQ.apply _)
-    //    }
+    implicit val reader: Reads[MCOQ] = {
+      (
+        (__ \ "body").read[QuestionBody](questionBodyReader) and
+        (__ \ "alternatives").read[List[String]] and
+        (__ \ "minimum").read[Int])(MCOQ.apply _)
+    }
 
     def asHtml(body: Option[QuestionBody], alternatives: Option[List[String]], minimum: Int): String = {
 
@@ -174,12 +155,12 @@ object Question {
   }
 
   object MCUQ {
-//    implicit val reader: Reads[MCUQ] = {
-//      (
-//        (__ \ "body").read[QuestionBody](questionBodyReader) and
-//        (__ \ "alternatives").read[Map[String, Boolean]] and
-//        (__ \ "minimum").read[Int])(MCUQ.apply _)
-//    }
+    implicit val reader: Reads[MCUQ] = {
+      (
+        (__ \ "body").read[QuestionBody](questionBodyReader) and
+        (__ \ "alternatives").read[Map[String, Boolean]] and
+        (__ \ "minimum").read[Int])(MCUQ.apply _)
+    }
     def asHtml(body: Option[QuestionBody], alternatives: Option[Map[String, Boolean]], minimum: Int): String = {
 
       def alternativeTag(a:Option[String],b:Option[Boolean]) = s"""<div class="alternative">${a.getOrElse("")}</div><div class="correct">${b.getOrElse("")}</div>"""

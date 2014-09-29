@@ -1,16 +1,33 @@
-package pool
+package com.faqtfinding.pool
 
 import org.specs2.mutable.Specification
 import scalaz._
-import Scalaz._
-import std.stream.{ streamInstance, streamMonoid }
+import scalaz.Scalaz._
 import pool.HTTree.AnswerResult
+import HTTree.cleaf
+import HTTree.cleafs
+import HTTree.cnode
+import HTTree.countCorrect
+import HTTree.countInCorrect
+import HTTree.countLongestCorrect
+import HTTree.countLongestInCorrect
+import HTTree.ctrunk
+import HTTree.ileaf
+import HTTree.inode
+import HTTree.itrunk
+import HTTree.merge
+import HTTree.path
+import HTTree.smerge
+import pool.HTTree
+import pool.Item
+import pool.Question
+import scala.Stream
 
 object HTTreeSpec extends Specification {
 
   import HTTree._
   import pool.Question._
-  import pool.Answers._
+  import com.faqtfinding.pool.Answers._
   import pool.Item._
   
 
