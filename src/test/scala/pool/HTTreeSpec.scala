@@ -103,6 +103,21 @@ object HTTreeSpec extends Specification {
     s6.show must_== "C"
 
   }
+  
+  "update should work" in {
+    s1 must_== s0.update(a1)
+    s2 must_== s1.update(a2)
+    s3 must_== s2.update(a3)
+    s4 must_== s3.update(a4)
+    s5 must_== s4.update(a5)
+    s6 must_== s5.update(a6)
+    s1_2 must_== s6.update(a1_2)
+    s2_2 must_== s1_2.update(a3_2)
+    s3_2 must_== s2_2.update(a2_2)
+    s4_2 must_== s3_2.update(a4_2)
+    s5_2 must_== s4_2.update(a5_2)
+    s6_2 must_== s5_2.update(a6_2)
+  }
 
   //Stream merge => merge of the results
   "smerge should work" in {
@@ -244,21 +259,6 @@ object HTTreeSpec extends Specification {
     s3.next must_== 4
   }
 
-  "update should work" in {
-    s1 must_== s0.update(a1)
-    s2 must_== s1.update(a2)
-    s3 must_== s2.update(a3)
-    s4 must_== s3.update(a4)
-    s5 must_== s4.update(a5)
-    s6 must_== s5.update(a6)
-    s1_2 must_== s6.update(a1_2)
-    s2_2 must_== s1_2.update(a3_2)
-    s3_2 must_== s2_2.update(a2_2)
-    s4_2 must_== s3_2.update(a4_2)
-    s5_2 must_== s4_2.update(a5_2)
-    s6_2 must_== s5_2.update(a6_2)
-  }
-
   "depth should work" in {
     s0.depth must_== 0
     s2.depth must_== 1
@@ -287,14 +287,14 @@ object HTTreeSpec extends Specification {
   }
 
   "Mixed Item tree should work" in {
-    val q1 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
-    val q2 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
-    val q3 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
-    val q4 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
-    val q5 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
-    val q6 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
-    val q7 = DICTI(QuestionBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
-    val cijferR = MCUI(QuestionBody("Welk cijfer vult deze reeks aan", Some(List("1", "4", "9", "16"))), Map(("20", false), ("25", true), ("30", false), ("9", false)), 1)
+    val q1 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
+    val q2 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Belgie"))), "Brussel")
+    val q3 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Duitsland"))), "Berlijn")
+    val q4 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Luxemburg"))), "Luxemburg")
+    val q5 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Frankrijk"))), "Parijs")
+    val q6 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Spanje"))), "Madrid")
+    val q7 = DICTI(Question.uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Portugal"))), "Lissabon")
+    val cijferR = MCUI(Question.uuid,QuestionBody("Welk cijfer vult deze reeks aan", Some(List("1", "4", "9", "16"))), Map(("20", false), ("25", true), ("30", false), ("9", false)), 1)
    
     val s0:HTTree[Item] = ileafs(q1, Stream(q2, q3, q4, q5, q6, q7,cijferR))
     s0.next must_== q1

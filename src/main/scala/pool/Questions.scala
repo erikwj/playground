@@ -2,10 +2,10 @@ package pool
 
 import pool.HTTree.AnswerResult
 import pool.Question.DICTQ
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.Reads
 
+import play.api.libs.json._
+import play.api.libs.json.Reads
+import play.api.libs.functional.syntax._
 import scalaz._
 import Scalaz._
 
@@ -18,41 +18,76 @@ object Question {
 
   import Item._
   import QuestionBody._
-  
-    case class QuestionBody(label: String, statements: Option[List[String]] = None) {
-    def asHtml: String = ???
+
+  //  private val ValidDocRef = """([\w-]{16})""".r
+  def uuid = java.util.UUID.randomUUID.toString
+
+  case class QuestionBody(label: String, statements: Option[List[String]] = None) {
+    // def asHtml: String = {
+
+    //   def statementTag(v: String) = s"""<div class="statement">$v</div>"""
+
+    //   val s = statements match {
+    //     case Some(s) =>
+    //       """<div class="statement-container">""" +
+    //         (s map { x => statementTag(x) }).mkString("") +
+    //         """</div"""
+    //     case None => ""
+    //   }
+
+    //   s"""<div class="label">$label</div>""" + s
+
+    // }
 
   }
 
   object QuestionBody {
     //json reader
 
-    implicit val questionBodyReader: Reads[QuestionBody] = {
-      (
-        (__ \ "label").read[String] and
-        (__ \ "statements").readNullable[List[String]])(QuestionBody.apply _)
+    //    implicit val questionBodyReader: Reads[QuestionBody] = {
+    //      (
+    //        (__ \ "label").read[String] and
+    //        (__ \ "statements").readNullable[List[String]])(QuestionBody.apply _)
+    //    }
+
+    def asHtml(qb: Option[QuestionBody]): String = {
+
+      def statementTag(v: String) = s"""<div class="statement">$v</div>"""
+      def statementContainer(st: String) = """<div class="statement-container"><ul class="list-inline"><li>""" + st + """</li></ul></div>"""
+      def label(l:String) = s"""<div class="label">$l</div>"""
+
+      qb match {
+        case Some(q) =>
+          val s = q.statements match {
+            case Some(s) => statementContainer((s map { x => statementTag(x) }).mkString("</li><li>"))
+            case None => ""
+          }
+          label(q.label) + s
+        case _ => label("") + statementContainer(statementTag(""))
+      }
+
     }
-    
-    
 
   }
-  
 
   case class DICTQ(body: String, answer: String) extends Question {
-
-    def item(instruction: String): Item = DICTI(QuestionBody(instruction, Some(List(body))), answer)
-    def reverseItem(reverseInstruction: String): Item = DICTI(QuestionBody(reverseInstruction, Some(List(answer))), body)
-def asHtml:String = ???
+    def item(instruction: String): Item = DICTI(uuid, QuestionBody(instruction, Some(List(body))), answer)
+    def reverseItem(reverseInstruction: String): Item = DICTI(uuid, QuestionBody(reverseInstruction, Some(List(answer))), body)
+    def asHtml:String = DICTQ.asHtml(Some(body),Some(answer))
   }
+
   object DICTQ {
-    implicit val reader: Reads[DICTQ] = {
-      (
-        (__ \ "body").read[String] and
-        (__ \ "answer").read[String])(DICTQ.apply _)
-    }
+    //    implicit val reader: Reads[DICTQ] = {
+    //      (
+    //        (__ \ "body").read[String] and
+    //        (__ \ "answer").read[String])(DICTQ.apply _)
+    //    }
+
+    def bodyAsHtml(body:Option[String]):String = s"""<div class="body"><input type="text" class="form-control" id="question" placeholder="${body.getOrElse("")}"></div>"""
+    def answerAsHtml(answer: Option[String]) = s"""<div class="answer"><input type="text" class="form-control" id="answer" placeholder="${answer.getOrElse("")}"></div>"""
+    def asHtml(body:Option[String],answer: Option[String]):String = bodyAsHtml(body) + answerAsHtml(answer)
     
-      
-  
+
   }
 
   /**
@@ -66,12 +101,26 @@ def asHtml:String = ???
         case _ => Stream.Empty
       }
       else questions map { _.item(instruction) }
-    
-    def asHtml:String = ???
+
+    def asHtml:String = DICTQGroup.asHtml(Some(instruction), reverseInstruction,questions)
+
   }
 
   object DICTQGroup {
+    def asHtml(instruction: Option[String], reverseInstruction: Option[String], questions: Stream[DICTQ]): String = {
+      def emptyQ = DICTQ.asHtml(None,None)
+      def container(content:String) = 
+        s"""<div class="instruction">${instruction.getOrElse("")}</div>""" +
+        s"""<div class="reverseInstruction">${reverseInstruction.getOrElse("")}</div>""" +
+        s"""<div class="item-container">""" + content + s"""</div>"""
 
+      questions match {
+        case Stream.Empty => container(emptyQ)
+        case _ => container((questions map { _.asHtml }).mkString(""))
+      }
+
+      
+    }
   }
 
   /**
@@ -80,22 +129,38 @@ def asHtml:String = ???
    *
    */
   case class MCOQ(body: QuestionBody, alternatives: List[String], minimum: Int) extends Question {
-    def item: Item = MCOI(body, alternatives, minimum)
-    
-    def asHtml:String = ???
-    
+    def item: Item = MCOI(uuid, body, alternatives, minimum)
+    def asHtml: String = MCOQ.asHtml(Some(body),Some(alternatives), minimum)
   }
 
   object MCOQ {
-    implicit val reader: Reads[MCOQ] = {
-      (
-        (__ \ "body").read[QuestionBody](questionBodyReader) and
-        (__ \ "alternatives").read[List[String]] and
-        (__ \ "minimum").read[Int])(MCOQ.apply _)
+    //    implicit val reader: Reads[MCOQ] = {
+    //      (
+    //        (__ \ "body").read[QuestionBody](questionBodyReader) and
+    //        (__ \ "alternatives").read[List[String]] and
+    //        (__ \ "minimum").read[Int]
+    //      )(MCOQ.apply _)
+    //    }
+
+    def asHtml(body: Option[QuestionBody], alternatives: Option[List[String]], minimum: Int): String = {
+
+      def alternativeTag(as: Option[String]) = {
+        s"""<div class="alternative">${as.getOrElse("")}</div>"""
+      }
+
+      def alternativeGroup(asg: Option[List[String]]) =
+        asg match {
+          case Some(a) => """<div class="alternative-container">""" +
+            (a map { x => alternativeTag(Some(x)) }).mkString("") +
+            """</div>"""
+          case _ => """<div class="alternative-container"><ol><li>""" +
+            alternativeTag(None) +
+            """</li></ol></div>"""
+        }
+
+      QuestionBody.asHtml(body) + alternativeGroup(alternatives)
+
     }
-    
-      
-  
   }
 
   /**
@@ -104,24 +169,35 @@ def asHtml:String = ???
    *
    */
   case class MCUQ(body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Question {
-    def item: Item = MCUI(body, alternatives, minimum)
-    
-     def asHtml:String = ???
+    def item: Item = MCUI(uuid, body, alternatives, minimum)
+    def asHtml: String = MCUQ.asHtml(Some(body),Some(alternatives), minimum)
   }
 
   object MCUQ {
-    implicit val reader: Reads[MCUQ] = {
-      (
-        (__ \ "body").read[QuestionBody](questionBodyReader) and
-        (__ \ "alternatives").read[Map[String, Boolean]] and
-        (__ \ "minimum").read[Int])(MCUQ.apply _)
+//    implicit val reader: Reads[MCUQ] = {
+//      (
+//        (__ \ "body").read[QuestionBody](questionBodyReader) and
+//        (__ \ "alternatives").read[Map[String, Boolean]] and
+//        (__ \ "minimum").read[Int])(MCUQ.apply _)
+//    }
+    def asHtml(body: Option[QuestionBody], alternatives: Option[Map[String, Boolean]], minimum: Int): String = {
+
+      def alternativeTag(a:Option[String],b:Option[Boolean]) = s"""<div class="alternative">${a.getOrElse("")}</div><div class="correct">${b.getOrElse("")}</div>"""
+
+      def alternativeGroup = alternatives match {
+        case Some(asg) => 
+        """<div class="alternative-container">""" +
+          (asg map { x => alternativeTag(Some(x._1),Some(x._2)) }).mkString("") +
+          """</div>"""
+        case _ => """<div class="alternative-container"><ul><li>""" +
+            alternativeTag(None,None) +
+            """</li></ul></div>"""
+      }
+      QuestionBody.asHtml(body) + alternativeGroup
+
     }
-    
-   
   }
-  
-    
-  
+
 }
 
 /**
@@ -130,8 +206,14 @@ def asHtml:String = ???
 sealed trait Item {
   import Item._
   import Question.QuestionBody
+
+  def id: String
   def body: QuestionBody
   def label: String = body.label
+
+  def asHtml: String 
+
+  def trialMode: Boolean = false
 
   def isCorrect(a: Answers): Validation[String, String]
 }
@@ -139,41 +221,53 @@ sealed trait Item {
 object Item {
 
   import Question.QuestionBody
+  import ErrorHandling._
+
   def clean(s: String): String = s.replaceAll("\\s+", " ").trim
 
+  def answer(input: ItemResponse): AnswerResult[String] = {
+    val itemid = input.id
+    AnswerResult(itemid, (Item.byId(itemid)).isCorrect(input.answers))
+  }
 
+  def byId(id: String): Item = ???
+
+  //    case class AnswerResult[+A](q: A, r: Validation[String,A])
 
   /**
    * Dictionnary Item is bidirectional
    */
-  case class DICTI(body: QuestionBody, answer: String) extends Item {
+  case class DICTI(id: String, body: QuestionBody, answer: String) extends Item {
+    import Question.DICTQ
+
     val strict: Boolean = true
 
     def isCorrect(a: Answers) =
       if (strict) {
-        if (clean(answer) == clean(a.input.head)) Success(clean(a.input.head))
-        else Failure("""wrongAnswer""")
+        if (clean(answer) == clean(a.input.head)) correctAnswer(id)
+        else wrongAnswer(id, clean(answer))
       } else {
-        if (clean(a.input.head).toLowerCase() == answer.toLowerCase()) Success(clean(a.input.head))
-        else Failure("""wrongAnswer""")
+        if (clean(a.input.head).toLowerCase() == answer.toLowerCase()) correctAnswer(id)
+        else wrongAnswer(id, clean(answer))
       }
-    
-    def asHtml:String = ???
-  
+
+    def asHtml = QuestionBody.asHtml(Some(body)) + DICTQ.answerAsHtml(Some(answer))
+
   }
 
   object DICTI {
-    
+
   }
 
   /**
    * Multiple Choice Ordered Item
    */
-  case class MCOI(body: QuestionBody, alternatives: List[String], minimum: Int) extends Item {
-
+  case class MCOI(id: String, body: QuestionBody, alternatives: List[String], minimum: Int) extends Item {
+    import Question.MCOQ
+    
     private def answerCompare(answer: String, correct: String) =
-      if (clean(answer) == correct) Success(clean(answer))
-      else Failure("""wrongAnswer""")
+      if (clean(answer) == correct) Success(id)
+      else wrongAnswer(id, answer)
 
     //@tailrec
     private def evaluate(as: List[String], corrects: List[String]): Validation[String, String] = {
@@ -184,50 +278,58 @@ object Item {
     }
 
     def isCorrect(a: Answers) =
-      if (a.input.length < minimum) Failure("tooFewAnswers")
+      if (a.input.length < minimum) tooFewAnswers(id, minimum)
       else { evaluate(a.input, alternatives) }
-    
-     def asHtml:String = ???
+
+    def asHtml = MCOQ.asHtml(Some(body),Some(alternatives), minimum)
   }
 
   object MCOI {
-   
+
   }
 
   /**
    * Multiple Choice Unordered Item
    */
-  case class MCUI(body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Item {
-
+  case class MCUI(id: String, body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Item {
+    import Question.MCUQ
+    
     private def evaluate(a: String): Validation[String, String] = {
       val ca = clean(a)
       alternatives.get(ca) match {
-        case Some(bb) => if (bb) Success(ca) else Failure("""wrongAnswer""")
-        case _ => Failure("answerNotAvailable")
+        case Some(bb) => if (bb) correctAnswer(id) else wrongAnswer(id, ca)
+        case _ => answerNotAvailable(id)
       }
     }
 
     def isCorrect(a: Answers) =
-      if (a.input.length < minimum) Failure("tooFewAnswers")
+      if (a.input.length < minimum) tooFewAnswers(id, minimum)
       else (a.input map { evaluate(_) }).reduce(_ +++ _)
 
-    def asHtml:String = ???
-    
+    def asHtml: String = MCUQ.asHtml(Some(body),Some(alternatives), minimum)
+  
+
   }
 
   object MCUI {
-    
-  
+
   }
-  
-  case class ItemResponse(itemId:String,answers:Answers)
-  object ItemResponse {
-//        implicit val reader: Reads[ItemResponse] = {
-//      (
-//        (__ \ "item").read[String] and
-//        (__ \ "answers").read[List[String]]
-//        )(ItemResponse.apply _)
-//    }
+
+  case class ItemResponse(id: String, answers: Answers)
+  //  case class ItemResponse(itemId: Id[Item], answers: List[String])
+  //  object ItemResponse {
+  //    implicit val reader: Reads[ItemResponse] = {
+  //      (
+  //        (__ \ "item").read[String] and
+  //        (__ \ "answers").read[List[String]])(ItemResponse.apply _)
+  //    }
+  //  }
+
+  object ErrorHandling {
+    def answerNotAvailable(id: String) = Failure("answerNotAvailable")
+    def tooFewAnswers(id: String, minimum: Int) = Failure("""tooFewAnswers""")
+    def wrongAnswer(id: String, answer: String) = Failure("""wrongAnswer""")
+    def correctAnswer(id: String) = Success(id)
   }
 
 }
@@ -245,5 +347,9 @@ object Answers {
   }
 
   case class MultipleAnswers(input: List[String]) extends Answers
+
+}
+
+sealed trait Rehearsal {
 
 }
