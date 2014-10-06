@@ -28,7 +28,7 @@ sealed abstract class HTTree[+A] {
   /**
    * Update: updates a HTTree with an answers and returns a new HTTree
    */
-  def update[B >: A](a: AnswerResult[B]) = emap(dropA(a.q))(updateR(a))
+  def update[B](a: AnswerResult[B]) = emap(dropA(a.q))(updateR(a))
 
   def fold[B](f: A => B)(g: (B, B) => B): B = result match {
     case Stream.Empty => f(rootValue)

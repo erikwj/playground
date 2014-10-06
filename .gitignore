@@ -3,6 +3,7 @@ build/
 .cache/
 .classpath
 .project
+.sublime-project
 .settings
 *.class
 *.log
