@@ -5,10 +5,11 @@ import scalaz._
 import Scalaz._
 
 object Rehearsals {
-  /*
-  =======================================================================================
-  */
 
+  /**
+   * Some explanation
+   * 
+   */
   case class ItemResult(item:Item,score:Int,history:List[(String,Validation[String,Item])]) {
     
     private def scoreIncrease:Int = score + 1 //could be + 1
@@ -20,7 +21,8 @@ object Rehearsals {
     -2 => every wrong answer needs an extra good one
     **/
     private def scoreDecrease1:Int = score - 1
-    private def scoreDecreaseTotal:Int = 0
+    private def scoreDecreaseTotal:Int = 0 //should be flexible
+    
     private def updateHistory(ar:AnswerResult[Item]) = (ar.q.iid -> ar.r)::history //move only references keep items in Root?
     private def updater(score:Int,ar:AnswerResult[Item]) = this.copy(score = score, history = updateHistory(ar))
 
@@ -45,13 +47,13 @@ object Rehearsals {
 
 
 
-//     def next:Option[Zipper[ItemSet]] = {
-//       //FILTER ITEMS that have been completed and put thos in history file
-//       if(atEnd) Stream(ItemSet(lefts.toZipper, Stream.Empty,Stream.Empty),ItemSet(rights.toZipper, Stream.Empty,Stream.Empty)).toZipper
-//       // if(current.atEnd) Stream(ItemSet( (lefts.append(rights).toZipper.get, Stream.Empty,Stream.Empty)).toZipper
-//       else Stream(ItemSet(current map {_.next},lefts,rights)).toZipper
-//     }
-
+  /**
+   * 
+   * Different implementation
+   * if(atEnd) Stream(ItemSet(lefts.toZipper, Stream.Empty,Stream.Empty),ItemSet(rights.toZipper, Stream.Empty,Stream.Empty)).toZipper
+   * 
+   * 
+   */
 
   case class ItemSet(items:Option[Zipper[ItemResult]], lefts:Stream[ItemResult],rights: Stream[ItemResult],stopCriterium:Int) {
 
@@ -103,6 +105,7 @@ object Rehearsals {
 
   case class Rehearsal(itemset:Option[ItemSet],stopCriterium:Int) {
     require(stopCriterium > 0)
+    require(stopCriterium < 10)
 
     def items: Option[Zipper[ItemResult]] = itemset >>= {_.items}
 
@@ -128,6 +131,7 @@ object Rehearsals {
       }
     }).getOrElse(true)
 
+//    def length:Int = (itemset map {(its) => its.items.toStream.length}).getOrElse(0)
 
   }
 
