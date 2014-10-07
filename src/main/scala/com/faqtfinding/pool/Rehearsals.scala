@@ -15,6 +15,8 @@ object Rehearsals {
    */
   case class ItemResult(item:Item,score:Int,history:List[(String,Validation[String,Item])]) {
     
+    import ItemResult._
+    
     private def scoreIncrease:Int = score + 1 //could be + 1
 
     /**
@@ -43,6 +45,8 @@ object Rehearsals {
       }
 
     def answerHistory:List[(String,Validation[String,Item])] = history.reverse
+    
+    def clean = itemresult(item)
 
   }
 
@@ -61,21 +65,20 @@ object Rehearsals {
    * 
    */
 
-  case class ItemSet(items:Option[Zipper[ItemResult]], lefts:Stream[ItemResult],rights: Stream[ItemResult],stopCriterium:Int) {
+  case class ItemSet(items:Option[Zipper[ItemResult]], incorrects:Stream[ItemResult],corrects: Stream[ItemResult],stopCriterium:Int) {
 
     import ItemSet._
 
     def atEnd:Boolean = (items map {_.atEnd}).getOrElse(true) //at end if empty set
 
+    //Should this be publically available?
+    def next(lefts:Stream[ItemResult],rights: Stream[ItemResult]):ItemSet = {
+	    if(atEnd) itemset(filterFinishedItems(lefts.append(rights),stopCriterium),stopCriterium)
+	    else this.copy(items = items >>= {_.next},lefts,rights) 
+    }
 
     //State change see chapter 6 fpis
     def update(answerResult:AnswerResult[Item]):ItemSet = {
-
-      //Should this be publically available?
-      def next(lefts:Stream[ItemResult],rights: Stream[ItemResult]):ItemSet = {
-        if(atEnd) itemset(filterFinishedItems(lefts.append(rights),stopCriterium),stopCriterium)
-        else this.copy(items = items >>= {_.next},lefts,rights) 
-      }
 
       //refactor
       val newitemresult: Stream[ItemResult] = (focus map {_.update(answerResult)}) match {
@@ -85,21 +88,34 @@ object Rehearsals {
 
       //update internal state and return next 
       answerResult.r match {
-        case Success(_) => next(lefts,rights.append(newitemresult))
-        case Failure(_) => next(lefts.append(newitemresult),rights)
+        case Success(_) => next(incorrects,corrects.append(newitemresult))
+        case Failure(_) => next(incorrects.append(newitemresult),corrects)
       }
 
     }
     
     def focus:Option[ItemResult] = items map {_.focus}
 
-    def isAnswered:Boolean = (focus map {(ir) => lefts.contains(ir) || rights.contains(ir)}).getOrElse(true)
-
+    def isAnswered(item:Option[ItemResult]):Boolean = ItemSet.isAnswered(item,incorrects,corrects)
+    
+    def deleteItem:Option[Zipper[ItemResult]] = items >>= {_.deleteRight}
+    
+    def delete:ItemSet = {
+      val newItems = deleteItem
+      println("End = " + (newItems map {_.end}))
+	    if(isAnswered(newItems map {_.focus})){
+	      itemset(filterFinishedItems(incorrects.append(corrects),stopCriterium),stopCriterium)
+	    }
+	    else this.copy(items = newItems,incorrects,corrects) 
+    }
+    
   }
 
   object ItemSet {
 
     def itemset(items:Stream[ItemResult],stopCriterium:Int): ItemSet = ItemSet(items.toZipper,Stream.Empty,Stream.Empty,stopCriterium)    
+ 		def itemset(lefts:Stream[ItemResult],focus:ItemResult,rights:Stream[ItemResult],stopCriterium:Int): ItemSet = 
+ 		  ItemSet(Some(Zipper(lefts,focus,rights)),Stream.Empty,Stream.Empty,stopCriterium)    
 
     def modifyItems(answerResult:AnswerResult[Item],items:Option[Zipper[ItemResult]]):Option[Zipper[ItemResult]] = {
       def updateItemResult(itemResult:ItemResult):ItemResult = itemResult.update(answerResult)
@@ -109,6 +125,10 @@ object Rehearsals {
     def filterFinishedItems(irs: Stream[ItemResult],stopCriterium:Int): Stream[ItemResult] = 
       irs.filter(_.score < stopCriterium)
 
+    def isAnswered(itemresult:Option[ItemResult], incorrects:Stream[ItemResult],corrects: Stream[ItemResult]):Boolean = {
+      def irContItem(i:Item,irs:Stream[ItemResult]):Boolean = irs.map(_.item).contains(i)      
+    	(itemresult map {(ir) => irContItem(ir.item,incorrects) || irContItem(ir.item,corrects)}).getOrElse(true)
+    }
   }
   
 
@@ -119,11 +139,15 @@ object Rehearsals {
 
     def items: Option[Zipper[ItemResult]] = itemset >>= {_.items}
 
-    def lefts: Option[Stream[ItemResult]] = itemset map {_.lefts}
+    def incorrects: Stream[ItemResult] = (itemset map {_.incorrects}).getOrElse(Stream.Empty)
 
-    def rights: Option[Stream[ItemResult]] = itemset map {_.rights}
+    def corrects: Stream[ItemResult] = (itemset map {_.corrects}).getOrElse(Stream.Empty)
 
     def focus: Option[ItemResult] = items map {_.focus}
+    
+    def lefts: Option[Stream[ItemResult]] = items map {_.lefts}
+    
+    def rights: Option[Stream[ItemResult]] = items map {_.rights}
     
     def item: Option[Item] = focus map {_.item}
     
@@ -131,7 +155,7 @@ object Rehearsals {
       if((item map {(i) => i == ar.q}).getOrElse(false)) this.copy(itemset = itemset map {_.update(ar)})
       else this
 
-    def isAnswered:Boolean = (itemset map {_.isAnswered}).getOrElse(true)
+    def isAnswered:Boolean = ItemSet.isAnswered(focus,incorrects,corrects)
 
     //UGLY!   
     def isFinished:Boolean = 
@@ -141,7 +165,16 @@ object Rehearsals {
       }
     }).getOrElse(true)
 
-   def length:Int = (itemset flatMap {_.items map {_.toStream.length}}).getOrElse(0)
+   def length:Int = (items map {_.length}).getOrElse(0)
+   
+   def index:Int = (items map {_.index}).getOrElse(0)
+   
+   def deleteCurrentItem = this.copy(itemset = itemset map {_.delete})
+   
+   def reset = {
+     val iset = items map {_ map {_.clean}} map {_.start}
+     this.copy(itemset = Some(ItemSet(iset,Stream.Empty,Stream.Empty,stopCriterium)))
+   }
 
   }
 
@@ -152,6 +185,9 @@ object Rehearsals {
       case Stream.Empty => Rehearsal(label, None,stopCriterium)
       case _ => Rehearsal(label, Some(itemset(items,stopCriterium)),stopCriterium)    
     }
+    
+    def rehearsal(label:String,lefts:Stream[ItemResult],focus:ItemResult,rights:Stream[ItemResult],stopCriterium:Int):Rehearsal = 
+      Rehearsal(label,Some(itemset(lefts,focus,rights,stopCriterium)),stopCriterium)
   }
 
 }

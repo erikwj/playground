@@ -80,6 +80,8 @@ object RehearsalsSpec extends Specification {
     val answered6 = answered5.update(a6)
     val answered7 = answered6.update(a7)
 
+    val answered6_2 = rhs2.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6)
+      
     "have a non empty label " in {
       rhs.label must beAnInstanceOf[String]
       rhs.label must not be empty
@@ -106,12 +108,12 @@ object RehearsalsSpec extends Specification {
     }
 
     "have a lefts container that contains incorrect answers" in {
-      answered2.lefts must_== Some(Stream.Empty)
-      answered2f.lefts must_== Some(Stream(i2answeredf))
+      answered2.incorrects must_== Stream.Empty
+      answered2f.incorrects must_== Stream(i2answeredf)
     }
     
     "have a rights container that contains correct answers" in {
-      answered2.rights must_== Some(Stream(i1answered, i2answered))
+      answered2.corrects must_== Stream(i1answered, i2answered)
     }
 
     "have a stopCriterium that returns no new item if all items comply to stopCriterium" in {
@@ -126,6 +128,10 @@ object RehearsalsSpec extends Specification {
       rehearsal("Empty", Stream.Empty, 1) must_== Rehearsal("Empty", None, 1)
 
     }
+    
+    "have an index function that returns position in itemlist" in {
+      answered5.index must_== 5
+    }
 
     "have the possibility to mix different item types in 1 rehearsal" in {
         //mixed answers should work
@@ -133,7 +139,7 @@ object RehearsalsSpec extends Specification {
         mixedRehearsal7Answered.focus must_== Some(itemresult(mi8))
     }
 
-    "merge lefts and rights after all items have been answered" in {
+    "merge incorrects and correctss after all items have been answered" in {
       val answeredLast_2CorrectAnswersNeeded = rhs.update(a1).update(a2f).update(a3).update(a4).update(a5).update(a6).update(a7)
         answeredLast_2CorrectAnswersNeeded.isFinished must beFalse
         answeredLast_2CorrectAnswersNeeded.isAnswered must beFalse
@@ -162,6 +168,49 @@ object RehearsalsSpec extends Specification {
       val mcqis = ItemResult.toItemResult(Stream(mcqi,mcqi))
       val rhs_mcqis: Rehearsal = rehearsal("mcqis",mcqis, 2)
       rhs_mcqis.length must_== 1
+    }
+    
+    "have a method to delete current item from a rehearsal" in {
+      // Five is answered => Focus on 6
+      // After deletion focus on 7
+      // 1 2 3 4 5 6 7
+      //           ^
+      answered5.deleteCurrentItem.item must_== Some(i7)
+ 		  answered6.deleteCurrentItem.item must_== None
+    	answered7.deleteCurrentItem.item must_== None
+    	// 2 correct answers needed
+    	answered6_2.deleteCurrentItem.item must_== Some(i1)
+    	rhs.deleteCurrentItem.item must_== Some(i2)
+    }
+    
+    
+    "have a method to insert an item in a rehearsal" in {
+      todo
+    }
+    
+    "have a method to find an item in a rehearsal" in {
+      todo
+    }
+    
+    "have a method to reset a rehearsal" in {
+      val reset5 = answered5.reset
+      reset5.item must_== Some(i1)
+      reset5.incorrects must_== Stream.Empty
+      reset5.corrects must_== Stream.Empty
+    }
+    
+    "have a method to create a rehearsal from lefts, focus, rights" in {
+      val lefts = Stream(ir1,ir2)
+      val focus = ir3
+      val rights = Stream(ir4,ir5)
+      val corrects = Stream(i1answered,i2answered)
+      val incorrects = Stream.Empty
+    
+      val nrhs = rehearsal("Created from separate input", lefts,focus,rights,2)
+      nrhs.focus must_== Some(focus)
+      nrhs.lefts must_== Some(lefts)
+      nrhs.rights must_== Some(rights)
+    
     }
 
   }
