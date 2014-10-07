@@ -10,6 +10,7 @@ import Scalaz._
 
 object RehearsalsSpec extends Specification {
   import Rehearsal._
+  import ItemResult._
 
   val q1 = DICTQ(uuid, "Nederland", "Amsterdam")
   val q2 = DICTQ(uuid, "Belgie", "Brussel")
@@ -92,16 +93,16 @@ object RehearsalsSpec extends Specification {
 
     "have a check that only matching answers will update itemresults" in {
       rhs.item must_== Some(i1)
-      rhs.update(a1).focus must_== Some(ItemResult(i2, 0, List()))
+      rhs.update(a1).focus must_== Some(itemresult(i2))
       rhs.update(a2).item must_== rhs.item
     }
     
     "have a possibility to chain updates" in {
-      rhs.update(a1).update(a2).focus must_== Some(ItemResult(i3, 0, List()))
+      rhs.update(a1).update(a2).focus must_== Some(itemresult(i3))
     }
 
     "have a focus method that returns current item that needs to be answered" in {
-      answered2.focus must_== Some(ItemResult(i3, 0, List()))
+      answered2.focus must_== Some(itemresult(i3))
     }
 
     "have a lefts container that contains incorrect answers" in {
@@ -124,37 +125,31 @@ object RehearsalsSpec extends Specification {
       rhs.item must_== Some(irs.head.item)
       rehearsal("Empty", Stream.Empty, 1) must_== Rehearsal("Empty", None, 1)
 
-
-        //stopCriterium == 2
-        val answered7_2 = rhs2.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6).update(a7)
-        answered7_2.isFinished must beFalse
-        answered7_2.isAnswered must beFalse
-        answered7_2.item must_== rhs.item
     }
 
     "have the possibility to mix different item types in 1 rehearsal" in {
         //mixed answers should work
         val mixedRehearsal7Answered = mixedRehearsal.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6).update(a7)
-        mixedRehearsal7Answered.focus must_== Some(ItemResult(mi8, 0, List()))
+        mixedRehearsal7Answered.focus must_== Some(itemresult(mi8))
     }
 
     "merge lefts and rights after all items have been answered" in {
-      val answered7_2 = rhs.update(a1).update(a2f).update(a3).update(a4).update(a5).update(a6).update(a7)
-        answered7_2.isFinished must beFalse
-        answered7_2.isAnswered must beFalse
+      val answeredLast_2CorrectAnswersNeeded = rhs.update(a1).update(a2f).update(a3).update(a4).update(a5).update(a6).update(a7)
+        answeredLast_2CorrectAnswersNeeded.isFinished must beFalse
+        answeredLast_2CorrectAnswersNeeded.isAnswered must beFalse
 
       "and filter out items that comply to stopCriterium" in {
 
-        answered7_2.isFinished must beFalse
+        answeredLast_2CorrectAnswersNeeded.isFinished must beFalse
         //score = -1 + 1 = 0
-        val lastAnswered = answered7_2.update(a2)
+        val lastAnswered = answeredLast_2CorrectAnswersNeeded.update(a2)
         lastAnswered.isFinished must beFalse
         
         lastAnswered.update(a2).isFinished must beTrue
       }
 
       "and put lefts before rights" in {
-        answered7_2.item must_== Some(i2)
+        answeredLast_2CorrectAnswersNeeded.item must_== Some(i2)
       }
     }
     

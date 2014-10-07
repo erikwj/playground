@@ -9,6 +9,9 @@ object Rehearsals {
   /**
    * Some explanation
    * 
+   * This class should be abstract
+   * By implementing the scoreDecrease function you can decide what kind of stopCriterium you want to support
+   * 
    */
   case class ItemResult(item:Item,score:Int,history:List[(String,Validation[String,Item])]) {
     
@@ -74,10 +77,11 @@ object Rehearsals {
         else this.copy(items = items >>= {_.next},lefts,rights) 
       }
 
+      //refactor
       val newitemresult: Stream[ItemResult] = (focus map {_.update(answerResult)}) match {
-          case Some(ir) => Stream(ir)
-          case _ => Stream.Empty 
-        }
+        case Some(ir) => Stream(ir)
+        case _ => Stream.Empty 
+      }
 
       //update internal state and return next 
       answerResult.r match {
