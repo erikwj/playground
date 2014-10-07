@@ -5,7 +5,7 @@ import play.api.libs.json.Reads
 import play.api.libs.functional.syntax._
 import scalaz._
 import scalaz.Scalaz._
-//import scala.Stream
+
 
 sealed trait Question {
   def qid:String
@@ -247,8 +247,6 @@ object Item {
   import Rehearsals.ItemResult
   
   def clean(s: String): String = s.replaceAll("\\s+", " ").trim
-
-  def toItemResult(items:Stream[Item]):Stream[ItemResult] = (items map { i => ItemResult(i,0,List.empty)}).toStream
 
   def byId(id: String): Item = ???
 
