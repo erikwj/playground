@@ -195,10 +195,9 @@ object RehearsalsSpec extends Specification {
     }
     
     "have a method that indicates if a rehearsal contains an item that is derived from a specific question" in {
-//      rhs.contains(mcq) must beFalse
-//      rhs.contains(q1) must beTrue
-//      mixedRehearsal.contains(mcq) must beTrue
-      todo
+      rhs.contains(mcq.qid) must beFalse
+      rhs.contains(q1.qid) must beTrue
+      mixedRehearsal.contains(mcq.qid) must beTrue
     }
 
   }

@@ -206,8 +206,9 @@ object Rehearsals {
     
     def answerHistory = incorrects.append(corrects) map {_.answerHistory}
     
-    def contains(question:Question):Boolean = 
-      (items map {(z) => z.foldLeft(false)((b:Boolean,ir:ItemResult) => (b && ir.item.qid == question.qid))}).getOrElse(false)
+    //todo String is weak
+    def contains(questionId:String):Boolean = 
+      (items map {(z) => z.foldLeft(false)((b:Boolean,ir:ItemResult) => (b || ir.item.qid == questionId))}).getOrElse(false)
     
   }
 
