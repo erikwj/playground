@@ -28,7 +28,7 @@ object RehearsalsSpec extends Specification {
     todo
     }
     
-    "create a looping instance of Rehearsal with None as stopCriterium" in {
+    "create a looping instance of Rehearsal with None as stopCriterium (rehearse modus)" in {
       val loopRehearsal = Rehearsal.rehearsal("loopRehearsal", irs,None) 
       loopRehearsal must beAnInstanceOf[Rehearsal]
     	
@@ -42,7 +42,7 @@ object RehearsalsSpec extends Specification {
     	  iteration1_2f.item must_== Some(i2)
     	}
       
-      "that can be converted to nonLooping rehearsal" in {
+      "that can be converted to nonLooping rehearsal (exam modus)" in {
         val nonLoopRehearsal = loopRehearsal.reset(Some(1))
         val iteration2 = nonLoopRehearsal.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6).update(a7)
     	  iteration2.length must_== 0
@@ -130,10 +130,28 @@ object RehearsalsSpec extends Specification {
       // 1 2 3 4 5 6 7
       //           ^
       answered5.deleteCurrentItem.item must_== Some(i7)
- 		  answered6.deleteCurrentItem.item must_== None
+    	
+      // Six is answered => Focus on 7
+      // After deletion focus on Nothing because next iteration is empty
+      // 1 2 3 4 5 6 7
+      //             ^
+      answered6.deleteCurrentItem.item must_== None
     	answered7.deleteCurrentItem.item must_== None
-    	// 2 correct answers needed
+
+    	// Six is answered => Focus on 7
+      // After deletion focus on 1
+      // 1 2 3 4 5 6 7
+      //             ^
+    	// 1 2 3 4 5 6 7
     	answered6_2.deleteCurrentItem.item must_== Some(i1)
+    	
+    	// Nothing is answered => Focus on 1
+      // After deletion focus on 2
+      // 1 2 3 4 5 6 7
+      // ^
+      //    	
+    	// 2 3 4 5 6 7
+    	// ^
     	rhs.deleteCurrentItem.item must_== Some(i2)
     }
     
@@ -171,16 +189,15 @@ object RehearsalsSpec extends Specification {
       nrhs.incorrects must_== incorrects
     
     }
-    
-    "have an exam modus that stops when stopCriterium is met" in {
-      todo
+        
+    "generate a stream of lists of answerhistories" in {
+      answered2.answerHistory must_== Stream(List((a1.q.iid -> a1.r)),List((a2.q.iid -> a2.r)))
     }
     
-    "have a rehearse modus that doesn't count score but only loops over items" in {
-      todo
-    }
-    
-    "generate a list of items with their answerhistory" in {
+    "have a method that indicates if a rehearsal contains an item that is derived from a specific question" in {
+//      rhs.contains(mcq) must beFalse
+//      rhs.contains(q1) must beTrue
+//      mixedRehearsal.contains(mcq) must beTrue
       todo
     }
 

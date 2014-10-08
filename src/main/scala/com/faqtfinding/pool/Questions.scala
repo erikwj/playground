@@ -59,8 +59,8 @@ object Question {
   }
 
   case class DICTQ(qid: String, body: String, answer: String) {
-    def item(instruction: String): Item = DICTI(uuid, QuestionBody(instruction, Some(List(body))), answer)
-    def reverseItem(reverseInstruction: String): Item = DICTI(uuid, QuestionBody(reverseInstruction, Some(List(answer))), body)
+    def item(instruction: String): Item = DICTI(uuid,qid, QuestionBody(instruction, Some(List(body))), answer)
+    def reverseItem(reverseInstruction: String): Item = DICTI(uuid,qid, QuestionBody(reverseInstruction, Some(List(answer))), body)
     def asHtml: String = DICTQ.asHtml(Some(body), Some(answer))
   }
 
@@ -135,7 +135,7 @@ object Question {
    *
    */
   case class MCOQ(qid: String, body: QuestionBody, alternatives: List[String], minimum: Int) extends Question {
-    def item: Item = MCOI(uuid, body, alternatives, minimum)
+    def item: Item = MCOI(uuid,qid, body, alternatives, minimum)
     def asHtml: String = MCOQ.asHtml(Some(body), Some(alternatives), minimum)
   }
 
@@ -182,7 +182,7 @@ object Question {
    *
    */
   case class MCUQ(qid: String, body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Question {
-    def item: Item = MCUI(uuid, body, alternatives, minimum)
+    def item: Item = MCUI(uuid,qid, body, alternatives, minimum)
     def asHtml: String = MCUQ.asHtml(Some(body), Some(alternatives), minimum)
   }
 
@@ -230,6 +230,7 @@ sealed trait Item {
   import Question.QuestionBody
 
   def iid: String
+  def qid: String
   def body: QuestionBody
   def label: String = body.label
 
@@ -261,7 +262,7 @@ object Item {
   /**
    * Dictionnary Item is bidirectional
    */
-  case class DICTI(iid: String, body: QuestionBody, answer: String) extends Item {
+  case class DICTI(iid: String, qid:String, body: QuestionBody, answer: String) extends Item {
     import Question.DICTQ
 
     val strict: Boolean = true
@@ -286,7 +287,7 @@ object Item {
   /**
    * Multiple Choice Ordered Item
    */
-  case class MCOI(iid: String, body: QuestionBody, alternatives: List[String], minimum: Int) extends Item {
+  case class MCOI(iid: String, qid:String, body: QuestionBody, alternatives: List[String], minimum: Int) extends Item {
     import Question.MCOQ
 
     private def answerCompare(answer: String, correct: String) =
@@ -315,7 +316,7 @@ object Item {
   /**
    * Multiple Choice Unordered Item
    */
-  case class MCUI(iid: String, body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Item {
+  case class MCUI(iid: String, qid:String, body: QuestionBody, alternatives: Map[String, Boolean], minimum: Int) extends Item {
     import Question.MCUQ
 
     private def evaluate(a: String): Validation[String, Item] = {

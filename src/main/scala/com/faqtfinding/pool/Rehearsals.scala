@@ -204,7 +204,11 @@ object Rehearsals {
     
     def copyItemSet(itemSet: Option[ItemSet]) = this.copy(itemSet = itemSet)
     
-    def answerHistory = (items map {(z) => z.toStream map {_.answerHistory}}).getOrElse(Stream.Empty)
+    def answerHistory = incorrects.append(corrects) map {_.answerHistory}
+    
+    def contains(question:Question):Boolean = 
+      (items map {(z) => z.foldLeft(false)((b:Boolean,ir:ItemResult) => (b && ir.item.qid == question.qid))}).getOrElse(false)
+    
   }
 
   object Rehearsal {
@@ -214,7 +218,6 @@ object Rehearsals {
       Rehearsal(label, itemSet, stopCriterium)
     def rehearsal(label: String, itemSet: Stream[ItemResult], stopCriterium: Option[Int]): Rehearsal =
       Rehearsal(label, Some(itemset(itemSet, stopCriterium)), stopCriterium)
-
   }
 
 }

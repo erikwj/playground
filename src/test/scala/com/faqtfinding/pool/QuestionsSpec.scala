@@ -56,7 +56,7 @@ object QuestionsSpec extends Specification {
   }
 
   "DICTI can be answered" in {
-    val dq = DICTI(uuid,QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
+    val dq = DICTI(uuid,q1.qid, QuestionBody("Wat is de hoofdstad van", Some(List("Nederland"))), "Amsterdam")
     val adq = SingleAnswer("Rotterdam ")
     val adq2 = SingleAnswer("Amsterdam	 ")
 
@@ -65,7 +65,7 @@ object QuestionsSpec extends Specification {
     dq.isCorrect(adq2) must_== Success(dq)
     dq.asHtml must_== """<div class="label">Wat is de hoofdstad van</div><div class="statement-container"><ul class="list-inline"><li><div class="statement">Nederland</div></li></ul></div><div class="answer"><input type="text" class="form-control" id="answer" placeholder="Amsterdam"></div>"""
 
-    val tree = DICTI(uuid, QuestionBody("Geef de Nederlandse vertaling voor", Some(List("tree"))), "boom")
+    val tree = DICTI(uuid,uuid, QuestionBody("Geef de Nederlandse vertaling voor", Some(List("tree"))), "boom")
     val treef = SingleAnswer("arbre")
     val treet = SingleAnswer(" boom ")
 
@@ -109,8 +109,8 @@ object QuestionsSpec extends Specification {
 
     "ordered form" in {
       //ordered => the first answers are evaluated until the minimum #answers is reached
-      val mcno = MCOI(uuid,QuestionBody("What is the alphabet like"), List("a", "b", "c", "d"), 3)
-      val mcno4 = MCOI(uuid,QuestionBody("What is the alphabet like"), List("a", "b", "c", "d"), 4)
+      val mcno = MCOI(uuid,uuid, QuestionBody("What is the alphabet like"), List("a", "b", "c", "d"), 3)
+      val mcno4 = MCOI(uuid,uuid, QuestionBody("What is the alphabet like"), List("a", "b", "c", "d"), 4)
       mcno.isCorrect(MultipleAnswers(List("a", "b", "c", "k"))) must_== Success(mcno)
       mcno4.isCorrect(MultipleAnswers(List("a", "b", "c", "k"))) must_== Failure("wrongAnswer")
       mcno.isCorrect(MultipleAnswers(List("e", "b", "c", "d"))) must_== Failure("wrongAnswer")
@@ -124,8 +124,8 @@ object QuestionsSpec extends Specification {
 
     "unordered form" in {
       //unordered => all answers are evaluated
-      val mcnu = MCUI(uuid,QuestionBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("5", false), ("d", true)), 3)
-      val mcnu4 = MCUI(uuid,QuestionBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 4)
+      val mcnu = MCUI(uuid,uuid, QuestionBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("5", false), ("d", true)), 3)
+      val mcnu4 = MCUI(uuid,uuid, QuestionBody("What is the alphabet like"), Map(("a", true), ("b", true), ("c", true), ("d", true)), 4)
       mcnu.isCorrect(MultipleAnswers(List("a", "b", "c", "k"))) must_== Failure("answerNotAvailable")
       mcnu.isCorrect(MultipleAnswers(List("a", "b", "c", "5"))) must_== Failure("wrongAnswer")
       mcnu.isCorrect(MultipleAnswers(List("a", "b", "c", "d"))) must_== Success(mcnu)

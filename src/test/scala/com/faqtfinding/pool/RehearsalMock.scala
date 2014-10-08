@@ -20,7 +20,8 @@ object RehearsalMock {
   val q5 = DICTQ(uuid, "Frankrijk", "Parijs")
   val q6 = DICTQ(uuid, "Spanje", "Madrid")
   val q7 = DICTQ(uuid, "Portugal", "Lissabon")
-  val mcqi = MCUQ(uuid, QuestionBody("WWII started in 1914"), Map(("Yes", true), ("No", false)), 1).item
+  val mcq = MCUQ(uuid, QuestionBody("WWII started in 1914"), Map(("Yes", true), ("No", false)), 1)
+  val mcqi = mcq.item
   val qg = DICTQGroup(uuid, "Wat is de hoofdstad van", Some("Van welk land is dit de hoofdstad"), Stream(q1, q2, q3, q4, q5, q6, q7))
   val ditems = qg.items(false)
   val ditems2 = qg.items(true)
