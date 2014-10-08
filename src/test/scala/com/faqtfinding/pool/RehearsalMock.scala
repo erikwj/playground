@@ -33,9 +33,9 @@ object RehearsalMock {
   val irsA = irs.toArray
   val mirsA = mirs.toArray
   
-  val rhs: Rehearsal = rehearsal("rhs1",irs, 1)
-  val rhs2: Rehearsal = rehearsal("rhs2", irs, 2)
-  val mixedRehearsal: Rehearsal = rehearsal("mixed rehearsal",mirs,2)
+  val rhs: Rehearsal = rehearsal("rhs1",irs, Some(1))
+  val rhs2: Rehearsal = rehearsal("rhs2", irs, Some(2))
+  val mixedRehearsal: Rehearsal = rehearsal("mixed rehearsal",mirs,Some(2))
   val ir1 = irsA.apply(0)
   val ir2 = irsA.apply(1)
   val ir3 = irsA.apply(2)

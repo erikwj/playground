@@ -50,6 +50,9 @@ object Rehearsals {
 
   }
 
+  /**
+   * State container for Item
+   */
   object ItemResult {
     def itemresult(i: Item) = ItemResult(i, 0, List.empty)
     def toItemResult(items: Stream[Item]): Stream[ItemResult] = items.distinct map { itemresult(_) }
@@ -63,16 +66,16 @@ object Rehearsals {
    *
    */
 
-  case class ItemSet(items: Option[Zipper[ItemResult]], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Int) {
+  case class ItemSet(items: Option[Zipper[ItemResult]], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Option[Int]) {
 
     import ItemSet._
 
     def atEnd: Boolean = (items map { _.atEnd }).getOrElse(true) //at end if empty set
 
     //Should this be publically available?
-    def next(lefts: Stream[ItemResult], rights: Stream[ItemResult]): ItemSet = {
-      if (atEnd) itemset(filterFinishedItems(lefts.append(rights), stopCriterium), stopCriterium)
-      else this.copy(items = items >>= { _.next }, lefts, rights)
+    private def next(incorrects: Stream[ItemResult], corrects: Stream[ItemResult]): ItemSet = {
+      if (atEnd) itemset(filterFinishedItems(incorrects.append(corrects), stopCriterium), stopCriterium)
+      else this.copy(items = items >>= { _.next }, incorrects, corrects)
     }
 
     //State change see chapter 6 fpis
@@ -108,19 +111,19 @@ object Rehearsals {
 
   object ItemSet {
     
-    def itemset(zitems: Option[Zipper[ItemResult]], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Int):ItemSet =
+    def itemset(zitems: Option[Zipper[ItemResult]], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Option[Int]):ItemSet =
       ItemSet(zitems, incorrects, corrects, stopCriterium) 
 
-    def itemset(zitems: Option[Zipper[ItemResult]], stopCriterium: Int):ItemSet =
-      itemset(zitems, Stream.Empty, Stream.Empty, stopCriterium: Int) 
+    def itemset(zitems: Option[Zipper[ItemResult]], stopCriterium: Option[Int]):ItemSet =
+      itemset(zitems, Stream.Empty, Stream.Empty, stopCriterium) 
     
-    def itemset(items: Stream[ItemResult], stopCriterium: Int): ItemSet =
+    def itemset(items: Stream[ItemResult], stopCriterium: Option[Int]): ItemSet =
       itemset(zipper(items), stopCriterium)
     
-    def itemset(lefts: Stream[ItemResult], focus: ItemResult, rights: Stream[ItemResult], stopCriterium: Int): ItemSet =
+    def itemset(lefts: Stream[ItemResult], focus: ItemResult, rights: Stream[ItemResult], stopCriterium: Option[Int]): ItemSet =
       itemset(zipper(lefts, focus, rights), stopCriterium)
     
-    def itemset(lefts: Stream[ItemResult], focus: ItemResult, rights: Stream[ItemResult], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Int): ItemSet =
+    def itemset(lefts: Stream[ItemResult], focus: ItemResult, rights: Stream[ItemResult], incorrects: Stream[ItemResult], corrects: Stream[ItemResult], stopCriterium: Option[Int]): ItemSet =
       itemset(zipper(lefts, focus, rights), incorrects, corrects, stopCriterium)
 
     def modifyItems(answerResult: AnswerResult[Item], items: Option[Zipper[ItemResult]]): Option[Zipper[ItemResult]] = {
@@ -128,8 +131,8 @@ object Rehearsals {
       items map { _.modify { updateItemResult } }
     }
 
-    def filterFinishedItems(irs: Stream[ItemResult], stopCriterium: Int): Stream[ItemResult] =
-      irs.filter(_.score < stopCriterium)
+    def filterFinishedItems(irs: Stream[ItemResult], stopCriterium: Option[Int]): Stream[ItemResult] = 
+      (stopCriterium map {(sc) => irs.filter(_.score < sc)}).getOrElse(irs)
 
     def isAnswered(itemresult: Option[ItemResult], incorrects: Stream[ItemResult], corrects: Stream[ItemResult]): Boolean = {
       def irContItem(i: Item, irs: Stream[ItemResult]): Boolean = irs.map(_.item).contains(i)
@@ -143,9 +146,9 @@ object Rehearsals {
 
   }
 
-  case class Rehearsal(label: String, itemSet: Option[ItemSet], stopCriterium: Int) {
-    require(stopCriterium > 0)
-    require(stopCriterium < 10)
+  case class Rehearsal(label: String, itemSet: Option[ItemSet], stopCriterium: Option[Int]) {
+//    require((stopCriterium map {_ > 0}).getOrElse(true))
+//    require((stopCriterium map {_ > 10}).getOrElse(true))
     require(label.length > 0)
     
     import Rehearsal._
@@ -186,20 +189,30 @@ object Rehearsals {
 
     def deleteCurrentItem = copyItemSet(itemSet map { _.delete })
 
-    def reset = {
+     /**
+     * Cleans all history and score and puts pointer to start position. Overrides current stopCriterium
+     */
+    def reset(sc:Option[Int]): Rehearsal = {
       val iset = items map { _ map { _.clean } } map { _.start }
-      copyItemSet(Some(itemset(iset, stopCriterium)))
+      copy(itemSet = Some(itemset(iset, sc)), stopCriterium = sc)
     }
     
+    /**
+     * Cleans all history and score and puts pointer to start position. Use current stopCriterium
+     */
+    def reset: Rehearsal = reset(stopCriterium)
+    
     def copyItemSet(itemSet: Option[ItemSet]) = this.copy(itemSet = itemSet)
+    
+    def answerHistory = (items map {(z) => z.toStream map {_.answerHistory}}).getOrElse(Stream.Empty)
   }
 
   object Rehearsal {
     import ItemSet._
 
-    def rehearsal(label: String, itemSet: Option[ItemSet], stopCriterium: Int): Rehearsal =
+    def rehearsal(label: String, itemSet: Option[ItemSet], stopCriterium: Option[Int]): Rehearsal =
       Rehearsal(label, itemSet, stopCriterium)
-    def rehearsal(label: String, itemSet: Stream[ItemResult], stopCriterium: Int): Rehearsal =
+    def rehearsal(label: String, itemSet: Stream[ItemResult], stopCriterium: Option[Int]): Rehearsal =
       Rehearsal(label, Some(itemset(itemSet, stopCriterium)), stopCriterium)
 
   }

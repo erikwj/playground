@@ -19,12 +19,35 @@ object RehearsalsSpec extends Specification {
     "have a non empty label " in {
       rhs.label must beAnInstanceOf[String]
       rhs.label must not be empty
-      Rehearsal.rehearsal("", irs,1) must throwA[IllegalArgumentException]
+      Rehearsal.rehearsal("", irs,Some(1)) must throwA[IllegalArgumentException]
     }
 
     "have a stopCriterium > 0 and < 10" in {
-      Rehearsal.rehearsal("incorrect", irs,0) must throwA[IllegalArgumentException]
-      Rehearsal.rehearsal("incorrect", irs,10) must throwA[IllegalArgumentException]
+//      Rehearsal.rehearsal("incorrect", irs,Some(0)) must throwA[IllegalArgumentException]
+//      Rehearsal.rehearsal("incorrect", irs,Some(10)) must throwA[IllegalArgumentException]
+    todo
+    }
+    
+    "create a looping instance of Rehearsal with None as stopCriterium" in {
+      val loopRehearsal = Rehearsal.rehearsal("loopRehearsal", irs,None) 
+      loopRehearsal must beAnInstanceOf[Rehearsal]
+    	
+ 		  val iteration1 = loopRehearsal.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6).update(a7)
+ 		  val iteration1_2f = loopRehearsal.update(a1).update(a2f).update(a3).update(a4).update(a5).update(a6).update(a7)
+ 		  val iteration1_a6 = loopRehearsal.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6)
+
+ 		  "and the number of items in this instance should never shrink (i.e. filterFinishedItems is disabled)" in {
+    	  iteration1.length must_== 7
+    	  iteration1_a6.corrects.length must_== 6
+    	  iteration1_2f.item must_== Some(i2)
+    	}
+      
+      "that can be converted to nonLooping rehearsal" in {
+        val nonLoopRehearsal = loopRehearsal.reset(Some(1))
+        val iteration2 = nonLoopRehearsal.update(a1).update(a2).update(a3).update(a4).update(a5).update(a6).update(a7)
+    	  iteration2.length must_== 0
+      }
+      
     }
 
     "have a check that only matching answers will update itemresults" in {
@@ -58,7 +81,7 @@ object RehearsalsSpec extends Specification {
       answered7.isAnswered must beTrue
       answered7.isFinished must beTrue
       rhs.item must_== Some(irs.head.item)
-      rehearsal("Empty", Stream.Empty, 1) must_== Rehearsal("Empty",Some(itemset(Stream(),1)),1)
+      rehearsal("Empty", Stream.Empty, Some(1)) must_== Rehearsal("Empty",Some(itemset(Stream(),Some(1))),Some(1))
     }
     
     "have an index function that returns position in itemlist" in {
@@ -97,7 +120,7 @@ object RehearsalsSpec extends Specification {
 
     "only contain unique items" in {
       val mcqis = ItemResult.toItemResult(Stream(mcqi,mcqi))
-      val rhs_mcqis: Rehearsal = rehearsal("mcqis",mcqis, 2)
+      val rhs_mcqis: Rehearsal = rehearsal("mcqis",mcqis, Some(2))
       rhs_mcqis.length must_== 1
     }
     
@@ -136,7 +159,7 @@ object RehearsalsSpec extends Specification {
       val rights = Stream(ir4,ir5)
       val corrects = Stream(i1answered,i2answered)
       val incorrects = Stream.Empty
-      val stopCriterium = 2
+      val stopCriterium = Some(2)
       
       val itemSet = Some(ItemSet.itemset(lefts, focus, rights,incorrects,corrects, stopCriterium))
     
@@ -147,6 +170,18 @@ object RehearsalsSpec extends Specification {
       nrhs.corrects must_== corrects
       nrhs.incorrects must_== incorrects
     
+    }
+    
+    "have an exam modus that stops when stopCriterium is met" in {
+      todo
+    }
+    
+    "have a rehearse modus that doesn't count score but only loops over items" in {
+      todo
+    }
+    
+    "generate a list of items with their answerhistory" in {
+      todo
     }
 
   }
